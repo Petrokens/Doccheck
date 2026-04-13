@@ -1,36 +1,20 @@
-// OpenRouter API integration with multiple provider support
+// NVIDIA NIM API integration (OpenAI-compatible)
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const NVIDIA_API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
-// Cheaper/free models that work with limited credits
-// Verified working models on OpenRouter
 const CHEAP_MODELS = {
-  openrouter: [
-    'meta-llama/llama-3.2-3b-instruct:free', // FREE - Most reliable
-    'mistralai/mistral-7b-instruct:free', // FREE
-    'google/gemini-flash-1.5-8b', // Low cost, if available
-    'google/gemini-pro-1.5', // Alternative Gemini
-    'openchat/openchat-7b:free', // FREE
-    'qwen/qwen-2-7b-instruct:free', // FREE
-    'gpt-3.5-turbo', // Low cost via OpenRouter
-    'anthropic/claude-3-haiku' // Low cost
-  ],
-  openai: [
-    'gpt-3.5-turbo', // Cheaper option
-    'gpt-4o-mini' // Cheaper than gpt-4
-  ],
-  anthropic: [
-    'claude-3-haiku-20240307' // Cheapest Claude model
+  nvidia: [
+    'meta/llama-3.1-8b-instruct',
+    'meta/llama-3.1-70b-instruct',
+    'nvidia/llama-3.1-nemotron-70b-instruct'
   ]
 };
 
-const DEFAULT_MODEL = 'meta-llama/llama-3.2-3b-instruct:free'; // Free default model
-const DEFAULT_MAX_TOKENS = 200000; // Reduced from 8000 to fit free tier
+const DEFAULT_MODEL = 'meta/llama-3.1-8b-instruct';
+const DEFAULT_MAX_TOKENS = 2000;
 
 /**
- * Call OpenRouter API for AI QC analysis
+ * Call NVIDIA API for AI QC analysis
  */
 export async function callOpenRouterAPI(prompt, fileContent = '', apiKey, options = {}) {
   if (!apiKey) {
@@ -39,8 +23,6 @@ export async function callOpenRouterAPI(prompt, fileContent = '', apiKey, option
 
   const model = options.model || DEFAULT_MODEL;
   const maxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
-  const provider = options.provider || 'openrouter';
-
   // Support chunked content for large documents
   // If fileContent is an array, it's chunks; otherwise use full content
   let contentToSend = '';
@@ -85,92 +67,55 @@ export async function callOpenRouterAPI(prompt, fileContent = '', apiKey, option
   });
 
   try {
-    let response;
-    
-    if (provider === 'openai' && apiKey.startsWith('sk-') && !apiKey.startsWith('sk-or-')) {
-      // Direct OpenAI API
-      response = await fetch(OPENAI_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: model || 'gpt-3.5-turbo',
-          messages: messages,
-          temperature: 0.3,
-          max_tokens: maxTokens
-        })
-      });
-    } else if (provider === 'anthropic' && apiKey.startsWith('sk-ant-')) {
-      // Direct Anthropic API
-      response = await fetch(ANTHROPIC_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: model || 'claude-3-haiku-20240307',
-          max_tokens: maxTokens,
-          messages: messages
-        })
-      });
-    } else {
-      // OpenRouter API (default)
-      response = await fetch(OPENROUTER_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': window.location.origin,
-        'X-Title': 'Petrolenz QC Platform'
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: messages,
-          temperature: 0.3,
-          max_tokens: maxTokens
-        })
-      });
-    }
+    const response = await fetch(NVIDIA_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: maxTokens
+      })
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.error?.message || `API request failed with status ${response.status}`;
       
-      // Handle authentication/user not found errors
-      if (errorMessage.includes('User not found') || 
-          errorMessage.includes('user not found') ||
-          errorMessage.includes('Invalid API key') ||
-          errorMessage.includes('invalid api key') ||
-          errorMessage.includes('Unauthorized') ||
-          response.status === 401 ||
-          response.status === 403) {
+      // Handle authentication errors
+      if (
+        errorMessage.includes('API key not valid') ||
+        errorMessage.includes('invalid api key') ||
+        errorMessage.includes('Unauthorized') ||
+        response.status === 401 ||
+        response.status === 403
+      ) {
         throw new Error(
           `API Key Authentication Failed.\n\n` +
-          `The API key is invalid, expired, or the user account doesn't exist.\n\n` +
+          `The NVIDIA API key is invalid or expired.\n\n` +
           `Solutions:\n` +
           `1. Check your API key in API Settings (⚙️ button)\n` +
-          `2. Get a new API key from:\n` +
-          `   - OpenRouter: https://openrouter.ai/keys\n` +
-          `   - OpenAI: https://platform.openai.com/api-keys\n` +
-          `   - Anthropic: https://console.anthropic.com/\n` +
+          `2. Get a new API key from: https://build.nvidia.com/\n` +
           `3. Clear localStorage and use a fresh key\n` +
-          `4. If using default key, it may have expired - set your own key`
+          `4. Ensure your key starts with "nvapi-"`
         );
       }
       
       // Handle model not found errors
-      if (errorMessage.includes('No endpoints found') || errorMessage.includes('model not found') || errorMessage.includes('not available')) {
+      if (
+        errorMessage.includes('model not found') ||
+        errorMessage.includes('not available') ||
+        response.status === 404
+      ) {
         throw new Error(
           `Model "${model}" not available.\n\n` +
-          `Please try one of these free models:\n` +
-          `- ${CHEAP_MODELS.openrouter[0]}\n` +
-          `- ${CHEAP_MODELS.openrouter[1]}\n` +
-          `- ${CHEAP_MODELS.openrouter[2]}\n\n` +
-          `Or check available models at: https://openrouter.ai/models`
+          `Please try one of these NVIDIA models:\n` +
+          `- ${CHEAP_MODELS.nvidia[0]}\n` +
+          `- ${CHEAP_MODELS.nvidia[1]}\n` +
+          `- ${CHEAP_MODELS.nvidia[2]}`
         );
       }
       
@@ -180,8 +125,8 @@ export async function callOpenRouterAPI(prompt, fileContent = '', apiKey, option
           `Insufficient credits. ${errorMessage}\n\n` +
           `Solutions:\n` +
           `1. Reduce max_tokens (currently ${maxTokens})\n` +
-          `2. Use a free model: ${CHEAP_MODELS.openrouter[0]}\n` +
-          `3. Add credits at https://openrouter.ai/settings/credits`
+          `2. Use a lighter model: ${CHEAP_MODELS.nvidia[0]}\n` +
+          `3. Reduce prompt/document size`
         );
       }
       
@@ -190,13 +135,7 @@ export async function callOpenRouterAPI(prompt, fileContent = '', apiKey, option
 
     const data = await response.json();
     
-    // Handle different response formats
-    let content;
-    if (provider === 'anthropic') {
-      content = data.content?.[0]?.text || data.content || '';
-    } else {
-      content = data.choices?.[0]?.message?.content || data.choices?.[0]?.text || '';
-    }
+    const content = data.choices?.[0]?.message?.content || data.choices?.[0]?.text || '';
     
     if (!content) {
       throw new Error('Invalid API response format - no content received');
@@ -210,46 +149,39 @@ export async function callOpenRouterAPI(prompt, fileContent = '', apiKey, option
 }
 
 /**
- * Get API key from environment, localStorage, or default hardcoded key
+ * Get API key from environment or localStorage
  */
 export function getAPIKey() {
-  // Default hardcoded API key (user's key)
-  const DEFAULT_API_KEY = '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';
-  
   // First try environment variable (set in .env file)
-  const envKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+  const envKey = import.meta.env.VITE_NVIDIA_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
   if (envKey) return envKey;
 
-  // Fallback to localStorage (user can set it in UI)
-  const storedKey = localStorage.getItem('openrouter_api_key');
+  // Fallback to localStorage (supports legacy key name)
+  const storedKey = localStorage.getItem('nvidia_api_key') || localStorage.getItem('gemini_api_key') || localStorage.getItem('openrouter_api_key');
   if (storedKey) return storedKey;
-
-  // Use default hardcoded key
-  return DEFAULT_API_KEY;
+  return '';
 }
 
 /**
  * Save API key to localStorage
  */
 export function saveAPIKey(apiKey) {
-  localStorage.setItem('openrouter_api_key', apiKey);
+  localStorage.setItem('nvidia_api_key', apiKey);
 }
 
 /**
  * Get available cheap/free models
  */
-export function getCheapModels(provider = 'openrouter') {
-  return CHEAP_MODELS[provider] || CHEAP_MODELS.openrouter;
+export function getCheapModels(provider = 'nvidia') {
+  return CHEAP_MODELS[provider] || CHEAP_MODELS.nvidia;
 }
 
 /**
  * Detect API provider from key format
  */
 export function detectProvider(apiKey) {
-  if (!apiKey) return 'openrouter';
-  if (apiKey.startsWith('sk-ant-')) return 'anthropic';
-  if (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-or-')) return 'openai';
-  return 'openrouter';
+  if (!apiKey) return 'nvidia';
+  return 'nvidia';
 }
 
 /**
@@ -265,7 +197,7 @@ export async function testAPIKey(apiKey) {
     };
   }
 
-  const provider = detectProvider(apiKey);
+  const provider = 'nvidia';
   
   try {
     // Make a minimal test request
@@ -275,7 +207,7 @@ export async function testAPIKey(apiKey) {
       '',
       apiKey,
       {
-        model: provider === 'openrouter' ? DEFAULT_MODEL : null,
+        model: DEFAULT_MODEL,
         maxTokens: 10,
         provider: provider
       }

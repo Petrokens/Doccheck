@@ -5,7 +5,7 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CircularProgress from '@mui/material/CircularProgress';
 import Tooltip from '@mui/material/Tooltip';
-import { callOpenRouterAPI, getAPIKey, detectProvider } from '../api/openRouter.js';
+import { callOpenRouterAPI, getAPIKey } from '../api/openRouter.js';
 import { extractTextFromFile } from '../utils/documentClassifier.js';
 import './PetroPilot.css';
 
@@ -17,7 +17,7 @@ const SYSTEM_PROMPT = `You are Petro Pilot, a senior engineering QA/QC assistant
 - Keep tone confident, concise, and expert.`;
 
 const MAX_ATTACHMENT_CHARS = 20000; // limit per file to avoid prompt overflow for free tier
-const CHAT_MODEL = 'gpt-4o';
+const CHAT_MODEL = 'meta/llama-3.1-70b-instruct';
 
 const QUICK_PROMPTS = [
   'Summarize key NFPA compliance gaps.',
@@ -117,7 +117,6 @@ export function PetroPilot() {
         throw new Error('API key missing. Set it via ⚙️ API Settings.');
       }
 
-      const provider = detectProvider(apiKey);
       const attachmentContext = buildAttachmentContext();
       const conversationHistory = buildConversationHistory();
 
@@ -126,7 +125,7 @@ export function PetroPilot() {
         attachmentContext,
         apiKey,
         {
-          provider,
+          provider: 'nvidia',
           model: CHAT_MODEL,
           systemPrompt: SYSTEM_PROMPT,
           conversationHistory,
@@ -187,7 +186,7 @@ export function PetroPilot() {
           <p>Live Model</p>
           <h3>Petro Pilot Assistant</h3>
           <p className="accent-footnote">
-            Powered by OpenRouter · Structured outputs · Document-aware
+            Powered by NVIDIA · Structured outputs · Document-aware
           </p>
         </div>
       </section>

@@ -18,7 +18,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ChatIcon from '@mui/icons-material/Chat';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
-import { callOpenRouterAPI, getAPIKey, detectProvider } from '../../api/openRouter.js';
+import { callOpenRouterAPI, getAPIKey } from '../../api/openRouter.js';
 import './AIChat.css';
 
 export function AIChat() {
@@ -68,8 +68,6 @@ export function AIChat() {
         throw new Error('API key not configured. Please set it in API Settings.');
       }
 
-      const provider = detectProvider(apiKey);
-      
       // Build context-aware prompt
       const systemPrompt = `You are an expert AI assistant for a Quality Control (QC) platform for engineering documents. 
 You help users with:
@@ -98,7 +96,7 @@ Be helpful, concise, and professional. If asked about specific documents, provid
         {
           model: null, // Use default
           maxTokens: 2000,
-          provider: provider,
+          provider: 'nvidia',
           systemPrompt: systemPrompt, // Custom system prompt for chat
           conversationHistory: conversationHistory
         }

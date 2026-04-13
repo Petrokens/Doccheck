@@ -1,7 +1,7 @@
 // Professional API Settings Component with Material UI Dialog
 
 import { useState, useEffect } from 'react';
-import { getCheapModels, detectProvider, testAPIKey, getAPIKey as getCurrentAPIKey } from '../../api/openRouter.js';
+import { getCheapModels, testAPIKey, getAPIKey as getCurrentAPIKey } from '../../api/openRouter.js';
 import {
   Dialog,
   DialogTitle,
@@ -29,12 +29,12 @@ import ErrorIcon from '@mui/icons-material/Error';
 export function APISettings({ apiConfig, onConfigChange, onClose }) {
   const [localConfig, setLocalConfig] = useState(apiConfig);
   const [apiKey, setApiKey] = useState(() => {
-    const storedKey = localStorage.getItem('openrouter_api_key');
-    return storedKey || import.meta.env.VITE_OPENROUTER_API_KEY || '';
+    const storedKey = localStorage.getItem('nvidia_api_key') || localStorage.getItem('gemini_api_key') || localStorage.getItem('openrouter_api_key');
+    return storedKey || import.meta.env.VITE_NVIDIA_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY || '';
   });
   const [usingDefaultKey, setUsingDefaultKey] = useState(() => {
-    const storedKey = localStorage.getItem('openrouter_api_key');
-    const envKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+    const storedKey = localStorage.getItem('nvidia_api_key') || localStorage.getItem('gemini_api_key') || localStorage.getItem('openrouter_api_key');
+    const envKey = import.meta.env.VITE_NVIDIA_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
     return !storedKey && !envKey;
   });
   const [testing, setTesting] = useState(false);
@@ -47,7 +47,7 @@ export function APISettings({ apiConfig, onConfigChange, onClose }) {
   const handleSave = () => {
     onConfigChange(localConfig);
     if (apiKey) {
-      localStorage.setItem('openrouter_api_key', apiKey);
+      localStorage.setItem('nvidia_api_key', apiKey);
     }
     if (onClose) onClose();
   };
@@ -64,14 +64,14 @@ export function APISettings({ apiConfig, onConfigChange, onClose }) {
       setTestResult({
         valid: false,
         message: `Test failed: ${error.message}`,
-        provider: detectProvider(apiKey || getCurrentAPIKey())
+        provider: 'nvidia'
       });
     } finally {
       setTesting(false);
     }
   };
 
-  const provider = detectProvider(apiKey);
+  const provider = 'nvidia';
   const cheapModels = getCheapModels(provider);
 
   return (
@@ -110,7 +110,7 @@ export function APISettings({ apiConfig, onConfigChange, onClose }) {
             </Typography>
             {usingDefaultKey && (
               <Alert severity="info" sx={{ mb: 2 }}>
-                Using default API key (configured in code)
+                No saved NVIDIA API key found. Add one below or via `.env`.
               </Alert>
             )}
             <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
@@ -124,7 +124,7 @@ export function APISettings({ apiConfig, onConfigChange, onClose }) {
                   setUsingDefaultKey(false);
                   setTestResult(null);
                 }}
-                placeholder={usingDefaultKey ? "Leave empty to use default key" : "Enter your API key"}
+                placeholder="Enter your NVIDIA API key"
                 variant="outlined"
               />
               <Button
@@ -137,8 +137,7 @@ export function APISettings({ apiConfig, onConfigChange, onClose }) {
               </Button>
             </Stack>
             <Typography variant="caption" color="text.secondary">
-              Detected provider: <Chip label={provider} size="small" sx={{ ml: 0.5 }} />
-              {usingDefaultKey && ' (using default key)'}
+              Active provider: <Chip label={provider} size="small" sx={{ ml: 0.5 }} />
             </Typography>
             {testResult && (
               <Alert
@@ -185,17 +184,14 @@ export function APISettings({ apiConfig, onConfigChange, onClose }) {
             />
           </Box>
 
-          {/* Provider Selection */}
-          <FormControl fullWidth size="small">
+          {/* Provider Selection (fixed to NVIDIA) */}
+          <FormControl fullWidth size="small" disabled>
             <InputLabel>Provider</InputLabel>
             <Select
-              value={localConfig.provider || 'openrouter'}
-              onChange={(e) => setLocalConfig({ ...localConfig, provider: e.target.value })}
+              value="nvidia"
               label="Provider"
             >
-              <MenuItem value="openrouter">OpenRouter</MenuItem>
-              <MenuItem value="openai">OpenAI (Direct)</MenuItem>
-              <MenuItem value="anthropic">Anthropic (Direct)</MenuItem>
+              <MenuItem value="nvidia">NVIDIA</MenuItem>
             </Select>
           </FormControl>
 

@@ -18,7 +18,7 @@ export function useAIQC() {
     return saved ? JSON.parse(saved) : {
       model: null, // Will use default
       maxTokens: 2000,
-      provider: 'openrouter'
+      provider: 'nvidia'
     };
   });
   const [logs, setLogs] = useState([]);
@@ -78,7 +78,7 @@ export function useAIQC() {
             ]
           : chunks; // For smaller chunk sets, process all
         
-        const selectedText = chunksToProcess.map((chunk, idx) => {
+        const selectedText = chunksToProcess.map((chunk) => {
           const originalIdx = chunks.indexOf(chunk);
           const chunkSize = typeof chunk === 'string' ? chunk.length : (chunk.text?.length || 0);
           const chunkText = typeof chunk === 'string' ? chunk : chunk.text;
