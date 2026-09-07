@@ -32,9 +32,18 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173
+Open http://localhost:5174 (or the port Vite prints).
 
 Default master user is created on first server start (`MASTER_EMAIL` / `MASTER_PASSWORD` in `.env`).
+
+## Security
+
+Hardening for both API and SPA is documented in:
+
+- [docs/SECURITY.md](docs/SECURITY.md) — implemented controls
+- [docs/SECURITY-TESTING.md](docs/SECURITY-TESTING.md) — authorized ethical-hacking brief
+
+Copy `server/.env.example` and replace placeholder secrets before any external review. After this release, users must log in again (refresh tokens are stored hashed).
 
 ## Product flow
 
