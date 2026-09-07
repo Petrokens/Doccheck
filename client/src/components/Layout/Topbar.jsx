@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Moon, Sun, UserCircle2 } from 'lucide-react';
 import SidebarMenuButton from '@/components/Layout/SidebarMenuButton';
-import { getUserProfile, logoutUser } from '@/services/authService';
 import { useSessionAuth } from '@/context/SessionAuthContext';
 import { resolveIsDark, setThemeMode } from '@/lib/theme';
 import { MAIN_PROFILE, MAIN_SETTINGS } from '@/lib/dashboardPaths';
@@ -18,14 +17,9 @@ function formatGmtOffset(date) {
 
 export default function Topbar() {
   const navigate = useNavigate();
-  const { logout } = useSessionAuth();
-  const [user, setUser] = useState(null);
+  const { logout, user } = useSessionAuth();
   const [dark, setDark] = useState(() => resolveIsDark());
   const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    getUserProfile().then(setUser).catch(() => setUser(null));
-  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -69,7 +63,6 @@ export default function Topbar() {
           className="rounded-lg border border-[#c4d2f0] px-3 py-1.5 text-sm text-[#0c2340] hover:bg-[#eef2f7] dark:border-[#3d4d66] dark:text-white dark:hover:bg-[#1e293b]"
           onClick={async () => {
             await logout();
-            await logoutUser();
             navigate('/login');
           }}
         >

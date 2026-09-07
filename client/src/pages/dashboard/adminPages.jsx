@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '@/components/Common/ConfirmDialog';
+import { publicApiError } from '@/lib/uploadSafety';
 import { deleteUser, getRolePermissions, listPermissions, listRoles, listUsers, setRolePermissions } from '@/services/adminService';
 
 export function UserManagement() {
   const [users, setUsers] = useState([]);
+  const [pendingId, setPendingId] = useState('');
+  const [deleting, setDeleting] = useState(false);
   useEffect(() => {
-    listUsers().then(setUsers).catch((e) => toast.error(e.message));
+    listUsers().then(setUsers).catch((e) => toast.error(publicApiError(e, 'Unable to load users')));
   }, []);
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold text-[#0B4D99] dark:text-white dark:text-white">User Management</h1>
+      <h1 className="mb-4 text-2xl font-bold text-[#0B4D99] dark:text-white">User Management</h1>
       <div className="overflow-x-auto rounded-2xl border border-[#c4d2f0] bg-white dark:border-dash-border dark:bg-dash-surface">
         <table className="min-w-full text-sm">
           <thead className="bg-[#e8eef8] text-left">
@@ -27,14 +31,7 @@ export function UserManagement() {
                 <td className="px-4 py-2">{u.email}</td>
                 <td className="px-4 py-2">{u.role_id}</td>
                 <td className="px-4 py-2 text-right">
-                  <button
-                    type="button"
-                    className="text-red-600"
-                    onClick={async () => {
-                      await deleteUser(u.user_id);
-                      setUsers((prev) => prev.filter((x) => x.user_id !== u.user_id));
-                    }}
-                  >
+                  <button type="button" className="text-red-600" onClick={() => setPendingId(u.user_id)}>
                     Delete
                   </button>
                 </td>
@@ -43,6 +40,27 @@ export function UserManagement() {
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingId)}
+        title="Delete user?"
+        message="This permanently removes the account. This cannot be undone."
+        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+        loading={deleting}
+        onClose={() => !deleting && setPendingId('')}
+        onConfirm={async () => {
+          setDeleting(true);
+          try {
+            await deleteUser(pendingId);
+            setUsers((prev) => prev.filter((x) => x.user_id !== pendingId));
+            setPendingId('');
+            toast.success('User deleted');
+          } catch (e) {
+            toast.error(publicApiError(e, 'Delete failed'));
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      />
     </div>
   );
 }

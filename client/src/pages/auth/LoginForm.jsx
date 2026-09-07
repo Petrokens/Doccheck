@@ -2,55 +2,47 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginUser } from '@/services/authService';
 import { useSessionAuth } from '@/context/SessionAuthContext';
+import { publicApiError } from '@/lib/uploadSafety';
 import { toast } from 'react-hot-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import logoMark from '@/assets/petrolenz-favicon.png';
 
-const SAVED_LOGIN_KEY = 'petrolenz.savedLogin';
+const REMEMBER_EMAIL_KEY = 'petrolenz.rememberEmail';
 
-function readSavedLogin() {
+function readRememberedEmail() {
   try {
-    const raw = localStorage.getItem(SAVED_LOGIN_KEY);
-    if (!raw) return { email: '', password: '', savePassword: false };
-    const parsed = JSON.parse(raw);
-    return {
-      email: parsed.email || '',
-      password: parsed.password || '',
-      savePassword: true,
-    };
+    localStorage.removeItem('petrolenz.savedLogin');
+    return localStorage.getItem(REMEMBER_EMAIL_KEY) || '';
   } catch {
-    return { email: '', password: '', savePassword: false };
+    return '';
   }
 }
 
 export default function LoginForm() {
-  const saved = readSavedLogin();
-  const [form, setForm] = useState({ email: saved.email, password: saved.password });
-  const [savePassword, setSavePassword] = useState(saved.savePassword);
+  const remembered = readRememberedEmail();
+  const [form, setForm] = useState({ email: remembered, password: '' });
+  const [rememberEmail, setRememberEmail] = useState(Boolean(remembered));
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { markLoggedIn } = useSessionAuth();
 
   useEffect(() => {
-    if (!savePassword) localStorage.removeItem(SAVED_LOGIN_KEY);
-  }, [savePassword]);
+    if (!rememberEmail) localStorage.removeItem(REMEMBER_EMAIL_KEY);
+  }, [rememberEmail]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const data = await loginUser(form);
-      if (savePassword) {
-        localStorage.setItem(SAVED_LOGIN_KEY, JSON.stringify(form));
-      } else {
-        localStorage.removeItem(SAVED_LOGIN_KEY);
-      }
-      markLoggedIn(data.accessToken);
+      if (rememberEmail) localStorage.setItem(REMEMBER_EMAIL_KEY, form.email.trim());
+      else localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      await markLoggedIn(data.accessToken);
       toast.success('Login successful!');
       navigate('/dashboard/qa-qc/process');
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'Login failed');
+      toast.error(publicApiError(err, 'Login failed'));
     } finally {
       setLoading(false);
     }
@@ -120,11 +112,11 @@ export default function LoginForm() {
           <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[#6b7280]">
             <input
               type="checkbox"
-              checked={savePassword}
-              onChange={(e) => setSavePassword(e.target.checked)}
+              checked={rememberEmail}
+              onChange={(e) => setRememberEmail(e.target.checked)}
               className="h-4 w-4 rounded border-[#c5cdd8] accent-[#4A86F7]"
             />
-            Save Password
+            Remember email
           </label>
           <Link to="/forgot-password" className="text-[13px] font-medium text-[#4A86F7] hover:underline">
             Forgot password?

@@ -8,8 +8,8 @@ import {
   useState,
 } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import { refreshAccessToken, logoutUser as apiLogout } from '@/services/authService';
-import { clearAccessToken, setAccessToken } from '@/lib/axios';
+import { getUserProfile, refreshAccessToken, logoutUser as apiLogout } from '@/services/authService';
+import { clearAccessToken, getAccessToken, setAccessToken } from '@/lib/axios';
 
 function isAccessTokenValid(token) {
   if (!token || typeof token !== 'string') return false;
@@ -24,64 +24,66 @@ function isAccessTokenValid(token) {
 const SessionAuthContext = createContext(null);
 
 export function SessionAuthProvider({ children }) {
-  const [ready, setReady] = useState(() => {
-    const token = localStorage.getItem('accessToken');
-    if (isAccessTokenValid(token)) {
-      setAccessToken(token);
-      return true;
-    }
-    return false;
-  });
-  const [authenticated, setAuthenticated] = useState(() =>
-    isAccessTokenValid(localStorage.getItem('accessToken')),
-  );
+  const [ready, setReady] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
   const bootRef = useRef(0);
 
+  const loadProfile = useCallback(async () => {
+    try {
+      const profile = await getUserProfile();
+      setUser(profile);
+      return profile;
+    } catch {
+      setUser(null);
+      return null;
+    }
+  }, []);
+
   const restoreSession = useCallback(async () => {
-    const stored = localStorage.getItem('accessToken');
-    if (isAccessTokenValid(stored)) {
-      setAccessToken(stored);
+    const current = getAccessToken();
+    if (isAccessTokenValid(current)) {
       setAuthenticated(true);
+      await loadProfile();
       return true;
     }
     try {
       const token = await refreshAccessToken();
       setAccessToken(token);
       setAuthenticated(true);
+      await loadProfile();
       return true;
     } catch {
-      localStorage.removeItem('accessToken');
       clearAccessToken();
+      setUser(null);
       setAuthenticated(false);
       return false;
     }
-  }, []);
+  }, [loadProfile]);
 
   useEffect(() => {
-    if (authenticated) {
-      setReady(true);
-      return;
-    }
     const gen = ++bootRef.current;
     restoreSession().finally(() => {
       if (gen === bootRef.current) setReady(true);
     });
-  }, [authenticated, restoreSession]);
+  }, [restoreSession]);
 
-  const markLoggedIn = useCallback((token) => {
+  const markLoggedIn = useCallback(async (token) => {
     setAccessToken(token);
     setAuthenticated(true);
     setReady(true);
-  }, []);
+    await loadProfile();
+  }, [loadProfile]);
 
   const logout = useCallback(async () => {
     await apiLogout();
+    setUser(null);
     setAuthenticated(false);
   }, []);
 
   const value = useMemo(
-    () => ({ ready, authenticated, markLoggedIn, logout }),
-    [ready, authenticated, markLoggedIn, logout],
+    () => ({ ready, authenticated, user, markLoggedIn, logout }),
+    [ready, authenticated, user, markLoggedIn, logout],
   );
 
   return <SessionAuthContext.Provider value={value}>{children}</SessionAuthContext.Provider>;

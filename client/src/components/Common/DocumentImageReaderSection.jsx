@@ -1,7 +1,24 @@
+import { useEffect, useState } from 'react';
+
 export default function DocumentImageReaderSection({ mainDocument, logs }) {
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  useEffect(() => {
+    if (!mainDocument) {
+      setPreviewUrl(null);
+      return undefined;
+    }
+    const isImage = /\.(png|jpe?g|webp|tif|tiff)$/i.test(mainDocument.name || '');
+    if (!isImage) {
+      setPreviewUrl(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(mainDocument);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [mainDocument]);
+
   if (!mainDocument) return null;
-  const isImage = /\.(png|jpe?g|webp|tif|tiff)$/i.test(mainDocument.name || '');
-  const previewUrl = isImage ? URL.createObjectURL(mainDocument) : null;
   return (
     <div className="rounded-2xl border border-[#c4d2f0] bg-white p-4 dark:border-dash-border dark:bg-dash-surface">
       <h3 className="text-sm font-semibold text-[#153063] dark:text-white">Document reader</h3>
@@ -9,7 +26,7 @@ export default function DocumentImageReaderSection({ mainDocument, logs }) {
         {mainDocument.name} · {(mainDocument.size / (1024 * 1024)).toFixed(2)} MB
       </p>
       {previewUrl ? (
-        <img src={previewUrl} alt="Uploaded document" className="mt-3 max-h-80 rounded-lg border object-contain dark:border-dash-border" />
+        <img src={previewUrl} alt="Uploaded document preview" className="mt-3 max-h-80 rounded-lg border object-contain dark:border-dash-border" />
       ) : (
         <p className="mt-3 text-sm text-[#5d6f9d] dark:text-slate-300">
           Server OCR extracts text from PDFs, Word, and scans during QA/QC analysis.

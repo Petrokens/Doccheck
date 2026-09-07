@@ -9,6 +9,7 @@ import DocumentImageReaderSection from '@/components/Common/DocumentImageReaderS
 import {
   inferDocumentTypeFromFile,
 } from '@/utils/inferQaQcDocumentType';
+import { validateUploadFile } from '@/lib/uploadSafety';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -33,7 +34,7 @@ async function getPdfPageCount(file) {
   try {
     const pdfjsLib = await import('pdfjs-dist');
     if (pdfjsLib?.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.4.168'}/build/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
     }
     const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
     return pdf.numPages || null;
@@ -103,15 +104,23 @@ export default function Process({
 
   const handleProjectDocumentChange = (file) => {
     const seq = ++inferSeqRef.current;
-    setMainDocument(file || null);
-    setSupportDocument(null);
-    setError('');
     if (!file) {
+      setMainDocument(null);
+      setSupportDocument(null);
+      setError('');
       setDocumentType('');
       setDocumentTypeSource('');
       setIsDetectingType(false);
       return;
     }
+    const check = validateUploadFile(file);
+    if (!check.ok) {
+      setError(check.reason);
+      return;
+    }
+    setMainDocument(file);
+    setSupportDocument(null);
+    setError('');
     const key = file.name || '';
     if (key && key !== supportModalSeenForMain) {
       setSupportModalSeenForMain(key);
@@ -161,7 +170,7 @@ export default function Process({
       if (!receivedReport) throw new Error('Report generation completed without report data.');
       pushLog(`Report generated successfully. Report ID: ${receivedReport.id}`);
     } catch (err) {
-      const message = err?.response?.data?.details || err?.response?.data?.error || err?.message || 'Failed to generate report.';
+      const message = err?.response?.data?.error || err?.message || 'Failed to generate report.';
       setError(message);
       pushLog(`Error: ${message}`);
     } finally {
@@ -430,7 +439,19 @@ export default function Process({
             <input
               type="file"
               accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp,.tif,.tiff"
-              onChange={(e) => setSupportDocument(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                const next = e.target.files?.[0] || null;
+                if (!next) {
+                  setSupportDocument(null);
+                  return;
+                }
+                const check = validateUploadFile(next);
+                if (!check.ok) {
+                  setError(check.reason);
+                  return;
+                }
+                setSupportDocument(next);
+              }}
               className="mt-4 block w-full text-sm"
             />
             <div className="mt-5 flex justify-end gap-3">

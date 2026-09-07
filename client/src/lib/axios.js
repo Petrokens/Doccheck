@@ -11,10 +11,9 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = accessToken || localStorage.getItem('accessToken');
-  if (token) {
-    accessToken = token;
-    config.headers.Authorization = `Bearer ${token}`;
+  config.headers['X-Requested-With'] = 'Petrolenz';
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
 });
@@ -24,15 +23,15 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const url = originalRequest?.url || '';
-    const isAuthPublic = url.includes('/auth/login') || url.includes('/auth/refresh');
+    const isAuthPublic = url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/forgot-password') || url.includes('/auth/reset-password');
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthPublic) {
       originalRequest._retry = true;
       try {
         accessToken = await refreshAccessToken();
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        originalRequest.headers['X-Requested-With'] = 'Petrolenz';
         return api(originalRequest);
       } catch {
-        localStorage.removeItem('accessToken');
         accessToken = null;
         window.location.href = '/login';
       }
@@ -42,8 +41,10 @@ api.interceptors.response.use(
 );
 
 export const setAccessToken = (token) => {
-  accessToken = token;
+  accessToken = token || null;
 };
+
+export const getAccessToken = () => accessToken;
 
 export const clearAccessToken = () => {
   accessToken = null;

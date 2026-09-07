@@ -1,9 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { SessionAuthProvider } from '@/context/SessionAuthContext';
-import { ProtectedRoute, PublicAuthRoute } from '@/components/auth/ProtectedRoute';
+import { ProtectedRoute, PublicAuthRoute, RoleProtectedRoute } from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import LoginPage from '@/pages/auth/Login';
 import ForgotPasswordPage from '@/pages/auth/ForgotPassword';
+import ResetPasswordPage from '@/pages/auth/ResetPassword';
 import DisciplineWorkspace from '@/pages/dashboard/DisciplineWorkspace';
 import History from '@/pages/dashboard/History';
 import AIReview from '@/pages/dashboard/AIReview';
@@ -25,6 +26,7 @@ function AppRoutesInner() {
     <Routes>
       <Route path="/login" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
       <Route path="/forgot-password" element={<PublicAuthRoute><ForgotPasswordPage /></PublicAuthRoute>} />
+      <Route path="/reset-password" element={<PublicAuthRoute><ResetPasswordPage /></PublicAuthRoute>} />
       <Route
         path="/dashboard"
         element={
@@ -62,13 +64,13 @@ function AppRoutesInner() {
         <Route path="settings" element={<Settings />} />
         <Route path="info" element={<Info />} />
         <Route path="system-status" element={<SystemStatus />} />
-        <Route path="env-settings" element={<EnvSettings />} />
-        <Route path="users" element={<UserManagement />} />
-        <Route path="roles" element={<RoleManagement />} />
-        <Route path="permissions" element={<AccessControl />} />
+        <Route path="env-settings" element={<RoleProtectedRoute><EnvSettings /></RoleProtectedRoute>} />
+        <Route path="users" element={<RoleProtectedRoute><UserManagement /></RoleProtectedRoute>} />
+        <Route path="roles" element={<RoleProtectedRoute><RoleManagement /></RoleProtectedRoute>} />
+        <Route path="permissions" element={<RoleProtectedRoute><AccessControl /></RoleProtectedRoute>} />
         <Route path="audit-log" element={<AuditLog />} />
-        <Route path="audit-reports" element={<PlaceholderPage title="Audit Reports" body="Use History and Audit Log for QA/QC traceability." />} />
-        <Route path="system-logs" element={<PlaceholderPage title="System Logs" body="Runtime logs are written to the API console." />} />
+        <Route path="audit-reports" element={<RoleProtectedRoute><PlaceholderPage title="Audit Reports" body="Use History and Audit Log for QA/QC traceability." /></RoleProtectedRoute>} />
+        <Route path="system-logs" element={<RoleProtectedRoute><PlaceholderPage title="System Logs" body="Runtime logs are written to the API console." /></RoleProtectedRoute>} />
       </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />

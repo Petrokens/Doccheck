@@ -13,6 +13,24 @@ export function ProtectedRoute({ children }) {
   return children;
 }
 
+export function RoleProtectedRoute({ children, roles = [1] }) {
+  const { ready, authenticated, user } = useSessionAuth();
+  const location = useLocation();
+  if (!ready) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-[#475569]">Checking your session…</div>;
+  }
+  if (!authenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  if (!user) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-[#475569]">Checking your session…</div>;
+  }
+  if (!roles.includes(Number(user.role_id))) {
+    return <Navigate to="/dashboard/qa-qc/process" replace />;
+  }
+  return children;
+}
+
 export function PublicAuthRoute({ children }) {
   const { ready, authenticated } = useSessionAuth();
   if (!ready) return children;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { sendForgotPasswordEmail } from '@/services/authService';
+import { publicApiError } from '@/lib/uploadSafety';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -33,7 +34,7 @@ export default function ForgotPasswordPage() {
               await sendForgotPasswordEmail(email);
               toast.success('If that email is registered, a reset link was sent.');
             } catch (err) {
-              toast.error(err?.response?.data?.error || err.message);
+              toast.error(publicApiError(err, 'Unable to send reset email'));
             } finally {
               setLoading(false);
             }

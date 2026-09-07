@@ -1,6 +1,6 @@
 import { jwtDecode } from 'jwt-decode';
 import { refreshAccessToken } from '../services/authService';
-import { setAccessToken } from './axios';
+import { getAccessToken, setAccessToken } from './axios';
 
 export function isAccessTokenValid(token) {
   if (!token || typeof token !== 'string') return false;
@@ -14,16 +14,15 @@ export function isAccessTokenValid(token) {
 }
 
 export async function getValidAccessToken() {
-  const stored = localStorage.getItem('accessToken');
-  if (isAccessTokenValid(stored)) {
-    setAccessToken(stored);
-    return stored;
-  }
+  const current = getAccessToken();
+  if (isAccessTokenValid(current)) return current;
   const fresh = await refreshAccessToken();
   setAccessToken(fresh);
   return fresh;
 }
 
 export function bearerAuthHeaders(token) {
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = { 'X-Requested-With': 'Petrolenz' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
 }
