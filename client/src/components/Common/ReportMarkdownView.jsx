@@ -61,7 +61,7 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
 
   const shell =
     variant === 'document'
-      ? 'prose-report space-y-3 text-sm text-[#1f3a73] dark:text-[#e6ebff]'
+      ? 'prose-report space-y-3 text-sm text-[#1f3a73] dark:text-slate-100'
       : 'space-y-2 text-sm';
 
   return (
@@ -69,14 +69,14 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
       {blocks.map((block, index) => {
         if (block.type === 'h1') {
           return (
-            <h1 key={index} className="text-xl font-bold text-[#0B4D99] dark:text-blue-200">
+            <h1 key={index} className="text-xl font-bold text-[#0B4D99] dark:text-blue-300">
               {parseInline(block.text)}
             </h1>
           );
         }
         if (block.type === 'h2') {
           return (
-            <h2 key={index} className="text-lg font-semibold text-[#153063] dark:text-[#edf1ff]">
+            <h2 key={index} className="text-lg font-semibold text-[#153063] dark:text-white">
               {parseInline(block.text)}
             </h2>
           );
@@ -97,9 +97,9 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
         }
         if (block.type === 'table') {
           return (
-            <div key={index} className="overflow-x-auto rounded-lg border border-[#c4d2f0] dark:border-[#2a3460]">
+            <div key={index} className="overflow-x-auto rounded-lg border border-[#c4d2f0] dark:border-dash-border">
               <table className="min-w-full text-left text-xs">
-                <thead className="bg-[#e8eef8] dark:bg-[#182553]">
+                <thead className="bg-[#e8eef8] dark:bg-[#1c2533] dark:text-white">
                   <tr>
                     {block.header.map((cell, ci) => (
                       <th key={ci} className="px-3 py-2 font-semibold">
@@ -110,7 +110,7 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
                 </thead>
                 <tbody>
                   {block.rows.map((row, ri) => (
-                    <tr key={ri} className="odd:bg-white even:bg-[#f7faff] dark:odd:bg-[#0d1431] dark:even:bg-[#10193b]">
+                    <tr key={ri} className="odd:bg-white even:bg-[#f7faff] dark:odd:bg-[#151b27] dark:even:bg-[#1a2230]">
                       {row.map((cell, ci) => (
                         <td key={ci} className="px-3 py-2 align-top">
                           {parseInline(cell)}

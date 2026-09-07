@@ -40,9 +40,9 @@ export default function History({ title = 'QC History' }) {
 
   return (
     <div className="p-4">
-      <h1 className="mb-6 text-2xl font-bold text-blue-800 dark:text-blue-400">{title}</h1>
+      <h1 className="mb-6 text-2xl font-bold text-blue-800 dark:text-white">{title}</h1>
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-gray-600 dark:text-gray-400">Select reports to delete</p>
+        <p className="text-sm text-gray-600 dark:text-slate-300">Select reports to delete</p>
         <div className="flex gap-2">
           <button type="button" onClick={() => setSelectedIds(allSelected ? [] : selectableIds)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white">
             {allSelected ? 'Clear selection' : `Select all (${selectableIds.length})`}
@@ -61,7 +61,7 @@ export default function History({ title = 'QC History' }) {
               <Link
                 key={entry.id}
                 to={`${QA_QC_BASE}/ai-review?id=${entry.id}`}
-                className={`flex flex-col rounded-lg border bg-white p-4 shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800 ${selectedIds.includes(entry.id) ? 'ring-2 ring-blue-500' : ''}`}
+                className={`flex flex-col rounded-lg border bg-white p-4 shadow hover:shadow-md dark:border-dash-border dark:bg-dash-surface ${selectedIds.includes(entry.id) ? 'ring-2 ring-blue-500' : ''}`}
               >
                 <div className="flex justify-between">
                   <input
@@ -70,11 +70,11 @@ export default function History({ title = 'QC History' }) {
                     onClick={(e) => e.stopPropagation()}
                     onChange={() => setSelectedIds((prev) => (prev.includes(entry.id) ? prev.filter((x) => x !== entry.id) : [...prev, entry.id]))}
                   />
-                  <span className="text-xs text-gray-500">{entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</span>
+                  <span className="text-xs text-gray-500 dark:text-slate-300">{entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</span>
                 </div>
-                <p className="mt-3 line-clamp-2 font-semibold">{entry.file_name}</p>
-                <p className="mt-2 text-sm text-gray-500">Department: {entry.document_type}</p>
-                <p className="text-sm text-gray-500">Checked by: {entry.checked_by}</p>
+                <p className="mt-3 line-clamp-2 font-semibold dark:text-white">{entry.file_name}</p>
+                <p className="mt-2 text-sm text-gray-500 dark:text-slate-300">Department: {entry.document_type}</p>
+                <p className="text-sm text-gray-500 dark:text-slate-300">Checked by: {entry.checked_by}</p>
                 {entry.score != null ? (
                   <p className={`mt-auto pt-3 text-lg font-bold ${entry.score >= 90 ? 'text-green-500' : entry.score >= 75 ? 'text-yellow-500' : 'text-red-500'}`}>
                     {entry.score}%

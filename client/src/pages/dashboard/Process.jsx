@@ -213,15 +213,15 @@ export default function Process({
   }, [isReportModalOpen]);
 
   return (
-    <div className="space-y-6 p-4 text-gray-800 dark:text-[#d6dcff] md:p-6">
-      <div className="rounded-2xl border border-[#c4d2f0] bg-white shadow-lg shadow-blue-100/50 dark:border-dash-border dark:bg-dash-surface">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#cfd9ee] px-5 py-4 dark:border-[#1d2750]">
+    <div className="space-y-6 p-4 text-gray-800 dark:text-dash-text md:p-6">
+      <div className="rounded-2xl border border-[#c4d2f0] bg-white shadow-lg shadow-blue-100/50 dark:border-dash-border dark:bg-dash-surface dark:shadow-none">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#cfd9ee] px-5 py-4 dark:border-dash-border">
           <div>
-            <h1 className="text-xl font-semibold text-[#0f1d44] dark:text-[#e9edff] md:text-2xl">{pageTitle}</h1>
-            <p className="mt-1 text-sm text-[#5d6f9d] dark:text-[#9aa8d6]">{pageDescription}</p>
+            <h1 className="text-xl font-semibold text-[#0f1d44] dark:text-white md:text-2xl">{pageTitle}</h1>
+            <p className="mt-1 text-sm text-[#5d6f9d] dark:text-dash-muted">{pageDescription}</p>
           </div>
           {report ? (
-            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">Completed</span>
+            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-300">Completed</span>
           ) : null}
         </div>
         <div className="px-5 py-4">
@@ -240,16 +240,16 @@ export default function Process({
                   key={step.id}
                   className={`rounded-xl border px-3 py-2 ${
                     done || active
-                      ? 'border-blue-400/60 bg-blue-500/15'
-                      : 'border-[#c3d1ee] bg-[#f7faff] dark:border-[#2a3460] dark:bg-[#10193b]'
+                      ? 'border-blue-500 bg-blue-500/15 dark:border-blue-400 dark:bg-blue-600/25'
+                      : 'border-[#c3d1ee] bg-[#f7faff] dark:border-dash-border dark:bg-dash-surface-elevated'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${done || active ? 'bg-blue-500 text-white' : 'bg-[#e5ecff] text-[#5570aa]'}`}>
+                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${done || active ? 'bg-blue-600 text-white' : 'bg-[#e5ecff] text-[#5570aa] dark:bg-[#2a364a] dark:text-slate-200'}`}>
                       {step.id}
                     </span>
-                    <Icon size={14} className={done || active ? 'text-blue-300' : 'text-[#6480bc]'} />
-                    <span className="text-xs font-medium text-[#415e99] dark:text-[#d2d9f8]">{step.label}</span>
+                    <Icon size={14} className={done || active ? 'text-blue-600 dark:text-blue-300' : 'text-[#6480bc] dark:text-slate-300'} />
+                    <span className="text-xs font-medium text-[#415e99] dark:text-white">{step.label}</span>
                   </div>
                 </div>
               );
@@ -262,20 +262,20 @@ export default function Process({
         <div className="col-span-12 space-y-5 rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface lg:col-span-7">
           {showDocumentTypeSelector ? (
             <div>
-              <label className="mb-2 block text-sm font-medium text-[#3c5a95] dark:text-[#c9d3f8]">
+              <label className="mb-2 block text-sm font-medium text-[#3c5a95] dark:text-white">
                 Engineering Document Type
               </label>
               <div ref={docTypeDropdownRef} className="relative">
                 <button
                   type="button"
                   onClick={() => setIsDocTypeOpen((p) => !p)}
-                  className="flex w-full items-center justify-between rounded-lg border border-[#bdcceb] bg-[#f8fbff] px-3 py-2 text-left text-sm dark:border-[#2b3766] dark:bg-[#111a3d] dark:text-[#e5eaff]"
+                  className="flex w-full items-center justify-between rounded-lg border border-[#bdcceb] bg-[#f8fbff] px-3 py-2.5 text-left text-sm dark:border-dash-border dark:bg-dash-surface-elevated dark:text-white"
                 >
                   <span>{isDetectingType ? 'Detecting from file…' : documentType || 'Select document type (or upload a file)'}</span>
-                  <ChevronDown size={16} className="text-[#6f88be]" />
+                  <ChevronDown size={16} className="text-[#6f88be] dark:text-slate-300" />
                 </button>
                 {isDocTypeOpen ? (
-                  <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-[#bdcceb] bg-white shadow-lg dark:border-[#2b3766] dark:bg-[#111a3d]">
+                  <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-[#bdcceb] bg-white shadow-lg dark:border-dash-border dark:bg-[#1c2533]">
                     {documentTypes.map((type) => (
                       <button
                         key={type}
@@ -287,8 +287,8 @@ export default function Process({
                         }}
                         className={`w-full px-3 py-2 text-left text-sm ${
                           documentType === type
-                            ? 'bg-[#1a2d68] text-white'
-                            : 'text-[#29457b] hover:bg-[#e8f0ff] dark:text-[#d7dfff] dark:hover:bg-[#182553]'
+                            ? 'bg-blue-600 text-white'
+                            : 'text-[#29457b] hover:bg-[#e8f0ff] dark:text-slate-100 dark:hover:bg-[#243044]'
                         }`}
                       >
                         {type}
@@ -298,11 +298,11 @@ export default function Process({
                 ) : null}
               </div>
               {documentType && documentTypeSource === 'auto' ? (
-                <p className="mt-1.5 text-xs text-[#5d7ab0]">Auto-selected from the uploaded file. You can change it.</p>
+                <p className="mt-1.5 text-xs text-[#5d7ab0] dark:text-slate-300">Auto-selected from the uploaded file. You can change it.</p>
               ) : documentType && documentTypeSource === 'default' ? (
-                <p className="mt-1.5 text-xs text-[#5d7ab0]">Default type selected — change it if this file is a different deliverable.</p>
+                <p className="mt-1.5 text-xs text-[#5d7ab0] dark:text-slate-300">Default type selected — change it if this file is a different deliverable.</p>
               ) : !documentType ? (
-                <p className="mt-1.5 text-xs text-[#6d86b8]">Upload a file and we will pick the matching type automatically.</p>
+                <p className="mt-1.5 text-xs text-[#6d86b8] dark:text-slate-300">Upload a file and we will pick the matching type automatically.</p>
               ) : null}
             </div>
           ) : null}
@@ -320,29 +320,38 @@ export default function Process({
               const file = e.dataTransfer?.files?.[0];
               if (file) handleProjectDocumentChange(file);
             }}
-            className={`rounded-xl border border-dashed p-6 text-center ${
-              isDragOver ? 'border-blue-500 bg-blue-100/70' : 'border-[#b9cbed] bg-[#f6f9ff] dark:border-[#314073] dark:bg-[#10193b]'
+            className={`rounded-xl border-2 border-dashed p-6 text-center ${
+              isDragOver
+                ? 'border-blue-500 bg-blue-100/70 dark:bg-blue-600/20'
+                : 'border-[#b9cbed] bg-[#f6f9ff] dark:border-blue-400/80 dark:bg-dash-surface-elevated'
             }`}
           >
-            <UploadCloud className="mx-auto mb-3 text-[#6783bf]" size={34} />
-            <p className="mb-3 text-sm text-[#385793] dark:text-[#d6defe]">Drag and drop your file here — type is selected automatically</p>
+            <UploadCloud className="mx-auto mb-3 text-[#6783bf] dark:text-blue-300" size={34} />
+            <p className="mb-4 text-sm text-[#385793] dark:text-slate-100">Drag and drop your file here — type is selected automatically</p>
             <input
               ref={fileInputRef}
               type="file"
               accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp,.tif,.tiff"
               onChange={(e) => handleProjectDocumentChange(e.target.files?.[0] || null)}
-              className="mx-auto block w-full max-w-xs text-xs file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-white"
+              className="hidden"
             />
-            {mainDocument ? <p className="mt-3 truncate text-xs text-emerald-600">{mainDocument.name}</p> : null}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+            >
+              Choose File
+            </button>
+            {mainDocument ? <p className="mt-3 truncate text-xs font-medium text-emerald-600 dark:text-emerald-300">{mainDocument.name}</p> : null}
           </div>
 
           {mainDocument ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-[#c3d1ee] bg-[#f7faff] px-3 py-2 dark:border-[#2b3766] dark:bg-[#10193b]">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-[#c3d1ee] bg-[#f7faff] px-3 py-2 dark:border-dash-border dark:bg-dash-surface-elevated">
               <div className="min-w-0">
-                <div className="text-sm font-medium text-[#1a3062] dark:text-[#e2e8ff]">Support Document</div>
-                <div className="truncate text-xs text-[#647eb4]">{supportDocument ? supportDocument.name : 'Not attached'}</div>
+                <div className="text-sm font-medium text-[#1a3062] dark:text-white">Support Document</div>
+                <div className="truncate text-xs text-[#647eb4] dark:text-slate-300">{supportDocument ? supportDocument.name : 'Not attached'}</div>
               </div>
-              <button type="button" onClick={() => setIsSupportModalOpen(true)} className="shrink-0 rounded-lg border border-[#9bb3e4] px-3 py-2 text-sm font-medium text-[#2e4f8f]">
+              <button type="button" onClick={() => setIsSupportModalOpen(true)} className="shrink-0 rounded-lg border border-[#9bb3e4] px-3 py-2 text-sm font-medium text-[#2e4f8f] dark:border-slate-400 dark:text-white">
                 {supportDocument ? 'Change' : 'Add'}
               </button>
             </div>
@@ -359,32 +368,41 @@ export default function Process({
             type="button"
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             {isGenerating ? generatingButtonLabel : generateButtonLabel}
           </button>
         </div>
 
-        <div className="col-span-12 rounded-2xl border border-[#c4d2f0] bg-[#0b1220] p-4 dark:border-dash-border dark:bg-dash-console lg:col-span-5">
+        <div className="col-span-12 rounded-2xl border border-[#c4d2f0] bg-[#0b1220] p-4 dark:border-dash-border dark:bg-[#0a0e16] lg:col-span-5">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-semibold text-dash-console-text">Processing Console</h2>
-            <span className="text-[11px] text-green-200/80">{isGenerating ? 'Running' : 'Idle'}</span>
+            <h2 className="font-semibold text-emerald-400">Processing Console</h2>
+            <span className="rounded-full border border-emerald-500/40 px-2 py-0.5 text-[11px] text-emerald-300">{isGenerating ? 'Running' : 'Idle'}</span>
           </div>
-          <div ref={consoleBodyRef} className="h-[320px] overflow-auto rounded-lg border border-dash-border bg-dash-console p-3 font-mono text-xs leading-6 text-dash-console-text">
+          <div ref={consoleBodyRef} className="h-[320px] overflow-auto rounded-lg border border-[#2a3548] bg-black p-3 font-mono text-xs leading-6 text-emerald-400">
             <pre className="whitespace-pre-wrap break-words">
               {terminalOutput}
-              <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-green-300 align-middle" />
+              <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-emerald-400 align-middle" />
             </pre>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setIsReportModalOpen(true)} disabled={!report?.id || isGenerating} className="rounded-lg border border-gray-500 px-3 py-2 text-sm font-medium text-gray-200 disabled:opacity-50">
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              disabled={!report?.id || isGenerating}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                report?.id && !isGenerating
+                  ? 'bg-blue-600 text-white hover:bg-blue-500'
+                  : 'border border-slate-500 text-slate-400'
+              }`}
+            >
               Open Report
             </button>
             <button
               type="button"
               onClick={() => report?.id && printProcessReportPdf(report.id).catch((e) => setError(e.message))}
               disabled={!report?.id || isGenerating}
-              className="inline-flex items-center justify-center gap-1 rounded-lg border border-green-500 px-3 py-2 text-sm font-medium text-green-300 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-400 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-40"
             >
               <Printer size={14} /> Print
             </button>
@@ -401,11 +419,11 @@ export default function Process({
       {isSupportModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button type="button" aria-label="Close" onClick={() => setIsSupportModalOpen(false)} className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-lg rounded-2xl border bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-900">
+          <div className="relative w-full max-w-lg rounded-2xl border bg-white p-5 shadow-xl dark:border-dash-border dark:bg-dash-surface dark:text-white">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">Add Support Document</h3>
-                <p className="mt-1 text-sm text-gray-500">Optional references to improve report quality.</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-slate-300">Optional references to improve report quality.</p>
               </div>
               <button type="button" onClick={() => setIsSupportModalOpen(false)}>✕</button>
             </div>
@@ -426,32 +444,32 @@ export default function Process({
       {isReportModalOpen && report ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6">
           <button type="button" aria-label="Close report modal" onClick={() => setIsReportModalOpen(false)} className="absolute inset-0 bg-black/55" />
-          <div className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#c4d2f0] bg-white shadow-2xl dark:border-[#2a3460] dark:bg-[#0d1431]">
-            <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#c4d2f0] bg-white shadow-2xl dark:border-dash-border dark:bg-dash-surface">
+            <div className="flex items-center justify-between border-b px-4 py-3 dark:border-dash-border">
               <div>
-                <h2 className="text-base font-semibold text-[#153063] dark:text-[#edf1ff]">Report</h2>
-                <p className="text-xs text-[#627ab1]">Report ID {report.id} · Press Esc to close</p>
+                <h2 className="text-base font-semibold text-[#153063] dark:text-white">Report</h2>
+                <p className="text-xs text-[#627ab1] dark:text-slate-300">Report ID {report.id} · Press Esc to close</p>
               </div>
-              <button type="button" onClick={() => setIsReportModalOpen(false)} className="rounded-lg border p-2"><X size={18} /></button>
+              <button type="button" onClick={() => setIsReportModalOpen(false)} className="rounded-lg border p-2 dark:border-dash-border dark:text-white"><X size={18} /></button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fbff] p-4 dark:bg-[#080d22] sm:p-6">
-              <div className="mb-4 rounded-2xl border bg-white p-4 dark:bg-[#0d1431]">
-                <h3 className="mb-3 text-sm font-semibold">Document Information</h3>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fbff] p-4 dark:bg-[#0b0f16] sm:p-6">
+              <div className="mb-4 rounded-2xl border bg-white p-4 dark:border-dash-border dark:bg-dash-surface">
+                <h3 className="mb-3 text-sm font-semibold dark:text-white">Document Information</h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between gap-3"><span className="text-[#627ab1]">File Name</span><span>{mainDocument?.name || 'N/A'}</span></div>
-                  <div className="flex justify-between gap-3"><span className="text-[#627ab1]">Document Type</span><span>{resolvedDocumentType || 'N/A'}</span></div>
-                  <div className="flex justify-between gap-3"><span className="text-[#627ab1]">Number of Pages</span><span>{isPageCountLoading ? 'Detecting...' : (mainDocumentPageCount ?? 'N/A')}</span></div>
+                  <div className="flex justify-between gap-3"><span className="text-[#627ab1] dark:text-slate-300">File Name</span><span className="dark:text-white">{mainDocument?.name || 'N/A'}</span></div>
+                  <div className="flex justify-between gap-3"><span className="text-[#627ab1] dark:text-slate-300">Document Type</span><span className="dark:text-white">{resolvedDocumentType || 'N/A'}</span></div>
+                  <div className="flex justify-between gap-3"><span className="text-[#627ab1] dark:text-slate-300">Number of Pages</span><span className="dark:text-white">{isPageCountLoading ? 'Detecting...' : (mainDocumentPageCount ?? 'N/A')}</span></div>
                 </div>
               </div>
               <div className="mb-4 flex flex-wrap gap-2">
-                <button type="button" onClick={() => reportMarkdownAnchorRef.current?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white">
+                <button type="button" onClick={() => reportMarkdownAnchorRef.current?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
                   <FileText size={16} /> Open report
                 </button>
-                <button type="button" onClick={async () => { const latest = await fetchProcessReport(report.id); setReport(latest); }} className="rounded-lg border px-3 py-2 text-xs">Refresh</button>
-                <button type="button" onClick={() => printProcessReportPdf(report.id)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs"><Printer size={14} /> Print PDF</button>
-                <button type="button" className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs"><Share2 size={14} /> Share</button>
+                <button type="button" onClick={async () => { const latest = await fetchProcessReport(report.id); setReport(latest); }} className="rounded-lg border px-3 py-2 text-xs dark:border-slate-400 dark:text-white">Refresh</button>
+                <button type="button" onClick={() => printProcessReportPdf(report.id)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs dark:border-slate-400 dark:text-white"><Printer size={14} /> Print PDF</button>
+                <button type="button" className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs dark:border-slate-400 dark:text-white"><Share2 size={14} /> Share</button>
               </div>
-              <div ref={reportMarkdownAnchorRef} className="rounded-xl border bg-white p-4 dark:bg-[#0a1028]">
+              <div ref={reportMarkdownAnchorRef} className="rounded-xl border bg-white p-4 dark:border-dash-border dark:bg-dash-surface">
                 <ReportMarkdownView markdown={report.report_markdown} />
               </div>
             </div>

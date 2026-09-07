@@ -9,7 +9,7 @@ export function UserManagement() {
   }, []);
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold text-[#0B4D99]">User Management</h1>
+      <h1 className="mb-4 text-2xl font-bold text-[#0B4D99] dark:text-white dark:text-white">User Management</h1>
       <div className="overflow-x-auto rounded-2xl border border-[#c4d2f0] bg-white dark:border-dash-border dark:bg-dash-surface">
         <table className="min-w-full text-sm">
           <thead className="bg-[#e8eef8] text-left">
@@ -54,7 +54,7 @@ export function RoleManagement() {
   }, []);
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold text-[#0B4D99]">Role Management</h1>
+      <h1 className="mb-4 text-2xl font-bold text-[#0B4D99] dark:text-white">Role Management</h1>
       <ul className="space-y-2">
         {roles.map((r) => (
           <li key={r.id} className="rounded-xl border border-[#c4d2f0] bg-white px-4 py-3 dark:border-dash-border dark:bg-dash-surface">
@@ -83,7 +83,7 @@ export function AccessControl() {
   }, [roleId]);
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold text-[#0B4D99]">Access Control</h1>
+      <h1 className="mb-4 text-2xl font-bold text-[#0B4D99] dark:text-white">Access Control</h1>
       <select value={roleId} onChange={(e) => setRoleId(e.target.value)} className="mb-4 rounded-lg border px-3 py-2">
         {roles.map((r) => (
           <option key={r.id} value={r.id}>{r.name}</option>
@@ -120,7 +120,7 @@ export function AccessControl() {
 export function AuditLog() {
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-[#0B4D99]">Audit Log</h1>
+      <h1 className="text-2xl font-bold text-[#0B4D99] dark:text-white">Audit Log</h1>
       <p className="mt-3 text-sm text-[#4f6490]">Login events are stored on each user record (last login). Report history is the QA/QC audit trail.</p>
     </div>
   );
@@ -129,7 +129,7 @@ export function AuditLog() {
 export function EnvSettings() {
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-[#0B4D99]">Environment Config</h1>
+      <h1 className="text-2xl font-bold text-[#0B4D99] dark:text-white">Environment Config</h1>
       <p className="mt-3 text-sm text-[#4f6490]">API keys and database URLs are configured in server/.env — they are not editable from the browser.</p>
     </div>
   );

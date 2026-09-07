@@ -28,15 +28,15 @@
 }
 
 .dark {
-  --dash-bg: #0d0f1a;
-  --dash-surface: #1a1d2e;
-  --dash-surface-elevated: #22263a;
-  --dash-border: #2e3348;
-  --dash-accent: #4f70ff;
-  --dash-text: #ffffff;
-  --dash-text-muted: #9ca3af;
-  --dash-console-bg: #000000;
-  --dash-console-text: #00ff00;
+  --dash-bg: #0b0f16;
+  --dash-surface: #151b27;
+  --dash-surface-elevated: #1c2533;
+  --dash-border: #4a5a73;
+  --dash-accent: #3b82f6;
+  --dash-text: #f8fafc;
+  --dash-text-muted: #c8d3e3;
+  --dash-console-bg: #05070c;
+  --dash-console-text: #4ade80;
 }
 
 html { height: 100%; scroll-behavior: smooth; }
@@ -49,3 +49,23 @@ body {
 }
 .dark body { background: var(--dash-bg); color: var(--dash-text); }
 h1, h2, h3 { font-family: "Raleway", sans-serif; }
+
+.dark ::selection {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #0b0f16;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #4a5a73;
+  border-radius: 8px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}

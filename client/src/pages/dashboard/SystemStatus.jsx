@@ -8,7 +8,7 @@ export default function SystemStatus() {
   }, []);
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-[#0B4D99]">System Status</h1>
+      <h1 className="text-2xl font-bold text-[#0B4D99] dark:text-white">System Status</h1>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         {[
           ['API', 'Operational'],
@@ -16,7 +16,7 @@ export default function SystemStatus() {
           ['Stored reports', String(stats?.qaqcTotal ?? '—')],
         ].map(([label, value]) => (
           <div key={label} className="rounded-2xl border border-[#c4d2f0] bg-white p-4 dark:border-dash-border dark:bg-dash-surface">
-            <p className="text-xs uppercase tracking-wide text-[#7a8794]">{label}</p>
+            <p className="text-xs uppercase tracking-wide text-[#7a8794] dark:text-slate-400">{label}</p>
             <p className="mt-1 text-xl font-bold">{value}</p>
           </div>
         ))}
