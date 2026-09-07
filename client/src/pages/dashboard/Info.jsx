@@ -11,6 +11,9 @@ import {
   UploadCloud,
 } from 'lucide-react';
 import { QA_QC_BASE, QA_QC_PROCESS } from '@/lib/dashboardPaths';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const CHECKS = [
   {
@@ -90,154 +93,165 @@ const STATUS_POINTS = [
 export default function Info() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
-      <header className="rounded-2xl border border-[#c4d2f0] bg-white p-6 dark:border-dash-border dark:bg-dash-surface">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7a8794] dark:text-slate-400">
-          Workspace · Info
-        </p>
-        <h1 className="mt-1 text-2xl font-bold text-[#0B4D99] dark:text-white">Petrolenz QA/QC</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#4f6490] dark:text-dash-muted">
-          AI QC checker for engineering documents. Upload a deliverable, run Check-1 (standard completeness),
-          Check-2 (technical review), and the ~4,000-rule library, then store a scored report and export PDF.
-          This product is document quality assurance only — it does not replace qualified engineering judgment.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link
-            to={QA_QC_PROCESS}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#0B4D99] px-4 py-2 text-sm font-semibold text-white hover:bg-[#083a73] dark:bg-blue-600 dark:hover:bg-blue-500"
-          >
-            <UploadCloud size={16} />
-            Start a QA/QC review
-          </Link>
-          <Link
-            to={`${QA_QC_BASE}/history`}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#c4d2f0] bg-[#f7faff] px-4 py-2 text-sm font-semibold text-[#0B4D99] hover:bg-[#e8f0ff] dark:border-dash-border dark:bg-dash-surface-elevated dark:text-white"
-          >
-            <BookOpen size={16} />
-            Open History
-          </Link>
-        </div>
-      </header>
+      <Card>
+        <CardHeader>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Workspace · Info
+          </p>
+          <CardTitle className="text-2xl">Petrolenz QA/QC</CardTitle>
+          <CardDescription className="max-w-3xl text-sm leading-relaxed">
+            AI QC checker for engineering documents. Upload a deliverable, run Check-1 (standard completeness),
+            Check-2 (technical review), and the ~4,000-rule library, then store a scored report and export PDF.
+            This product is document quality assurance only — it does not replace qualified engineering judgment.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button asChild>
+            <Link to={QA_QC_PROCESS}>
+              <UploadCloud />
+              Start a QA/QC review
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to={`${QA_QC_BASE}/history`}>
+              <BookOpen />
+              Open History
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <section>
-        <h2 className="text-lg font-bold text-[#0B4D99] dark:text-white">How a review is scored</h2>
+        <h2 className="font-heading text-lg font-semibold">How a review is scored</h2>
         <div className="mt-3 grid gap-4 md:grid-cols-3">
           {CHECKS.map((item) => {
             const Icon = item.icon;
             return (
-              <article
-                key={item.id}
-                className="rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface"
-              >
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8f0ff] text-[#0B4D99] dark:bg-dash-surface-elevated dark:text-blue-300">
-                  <Icon size={18} />
-                </span>
-                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[#7a8794] dark:text-slate-400">
-                  {item.id}
-                </p>
-                <h3 className="mt-1 text-base font-semibold text-[#0B4D99] dark:text-white">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[#4f6490] dark:text-dash-muted">{item.body}</p>
-              </article>
+              <Card key={item.id}>
+                <CardHeader>
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-primary">
+                    <Icon size={18} />
+                  </span>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {item.id}
+                  </p>
+                  <CardTitle>{item.title}</CardTitle>
+                  <CardDescription>{item.body}</CardDescription>
+                </CardHeader>
+              </Card>
             );
           })}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface">
-        <h2 className="text-lg font-bold text-[#0B4D99] dark:text-white">Workflow</h2>
-        <ol className="mt-4 grid gap-3 sm:grid-cols-2">
-          {STEPS.map((step) => (
-            <li key={step.n} className="flex gap-3 rounded-xl border border-[#c3d1ee] bg-[#f7faff] p-3 dark:border-dash-border dark:bg-dash-surface-elevated">
-              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0B4D99] text-xs font-bold text-white dark:bg-blue-600">
-                {step.n}
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-[#29457b] dark:text-white">{step.label}</p>
-                <p className="mt-0.5 text-sm text-[#4f6490] dark:text-dash-muted">{step.detail}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Workflow</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="grid gap-3 sm:grid-cols-2">
+            {STEPS.map((step) => (
+              <li key={step.n} className="flex gap-3 rounded-xl border bg-muted/40 p-3">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  {step.n}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold">{step.label}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{step.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </CardContent>
+      </Card>
 
       <section>
-        <h2 className="text-lg font-bold text-[#0B4D99] dark:text-white">Disciplines</h2>
-        <p className="mt-1 text-sm text-[#4f6490] dark:text-dash-muted">
+        <h2 className="font-heading text-lg font-semibold">Disciplines</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Each workspace infers document type from the file (PFD, P&amp;ID, isometric, datasheet, HAZOP, and others) or lets you pick it manually.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {DISCIPLINES.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className="rounded-full border border-[#c4d2f0] bg-white px-3 py-1.5 text-sm font-medium text-[#0B4D99] hover:bg-[#e8f0ff] dark:border-dash-border dark:bg-dash-surface dark:text-blue-200 dark:hover:bg-dash-surface-elevated"
-            >
-              {item.label}
-            </Link>
+            <Button key={item.path} asChild variant="outline" size="sm" className="rounded-full">
+              <Link to={item.path}>{item.label}</Link>
+            </Button>
           ))}
         </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface">
-          <h2 className="flex items-center gap-2 text-lg font-bold text-[#0B4D99] dark:text-white">
-            <ShieldCheck size={18} />
-            Scoring
-          </h2>
-          <ul className="mt-3 space-y-2 text-sm">
-            {SCORES.map(([name, detail]) => (
-              <li key={name} className="flex gap-2">
-                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-300" />
-                <span className="text-[#4f6490] dark:text-dash-muted">
-                  <strong className="font-semibold text-[#29457b] dark:text-white">{name}.</strong> {detail}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {STATUS_POINTS.map((row) => (
-              <div key={row.status} className="rounded-xl border border-[#c3d1ee] bg-[#f7faff] px-3 py-2 dark:border-dash-border dark:bg-dash-surface-elevated">
-                <p className="text-[11px] uppercase tracking-wide text-[#7a8794] dark:text-slate-400">{row.status}</p>
-                <p className="text-sm font-semibold text-[#0B4D99] dark:text-white">{row.score}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck size={18} />
+              Scoring
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              {SCORES.map(([name, detail]) => (
+                <li key={name} className="flex gap-2">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary" />
+                  <span className="text-muted-foreground">
+                    <strong className="font-semibold text-foreground">{name}.</strong> {detail}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {STATUS_POINTS.map((row) => (
+                <div key={row.status} className="rounded-xl border bg-muted/40 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{row.status}</p>
+                  <p className="text-sm font-semibold">{row.score}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface">
-          <h2 className="flex items-center gap-2 text-lg font-bold text-[#0B4D99] dark:text-white">
-            <FileText size={18} />
-            Report output
-          </h2>
-          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-[#4f6490] dark:text-dash-muted">
-            {REPORT_SECTIONS.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <p className="mt-4 flex items-center gap-2 text-sm text-[#4f6490] dark:text-dash-muted">
-            <Printer size={16} className="text-[#0B4D99] dark:text-blue-300" />
-            Print or download PDF from the completed report or History.
-          </p>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText size={18} />
+              Report output
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+              {REPORT_SECTIONS.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <Printer size={16} className="text-primary" />
+              Print or download PDF from the completed report or History.
+            </p>
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface">
-        <h2 className="text-lg font-bold text-[#0B4D99] dark:text-white">Final verdict</h2>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Final verdict</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2">
           {VERDICTS.map(([label, detail]) => (
-            <div key={label} className="rounded-xl border border-[#c3d1ee] bg-[#f7faff] px-4 py-3 dark:border-dash-border dark:bg-dash-surface-elevated">
-              <p className="text-sm font-semibold text-[#29457b] dark:text-white">{label}</p>
-              <p className="mt-0.5 text-sm text-[#4f6490] dark:text-dash-muted">{detail}</p>
+            <div key={label} className="rounded-xl border bg-muted/40 px-4 py-3">
+              <p className="text-sm font-semibold">{label}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{detail}</p>
             </div>
           ))}
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface">
-        <h2 className="text-lg font-bold text-[#0B4D99] dark:text-white">Scope</h2>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Scope</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Included</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#4f6490] dark:text-dash-muted">
+            <Badge variant="secondary">Included</Badge>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               <li>Single-document QA/QC with optional support file</li>
               <li>OCR for scanned PDFs, drawings, and images</li>
               <li>Stored reports, History, AI QC Inbox, and PDF export</li>
@@ -245,16 +259,16 @@ export default function Info() {
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#9a6b1f] dark:text-amber-300">Not in this product</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#4f6490] dark:text-dash-muted">
+            <Badge variant="outline">Not in this product</Badge>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               <li>TBE / bid evaluation</li>
               <li>Standalone cross-document comparison suites</li>
               <li>Constructability or revision-impact copilots</li>
               <li>Replacement for PE / licensed engineering sign-off</li>
             </ul>
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }

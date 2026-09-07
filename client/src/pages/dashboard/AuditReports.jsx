@@ -1,9 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, FileSearch, RefreshCw, Search, Users } from 'lucide-react';
-import { MAIN_USERS, QA_QC_BASE } from '@/lib/dashboardPaths';
+import { QA_QC_BASE } from '@/lib/dashboardPaths';
 import { listRoles, listUsers } from '@/services/adminService';
 import { fetchProcessHistory } from '@/services/processReportService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 function formatWhen(value) {
   if (!value) return '—';
@@ -81,23 +94,29 @@ export default function AuditReports() {
     <div className="space-y-5 p-4 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7a8794] dark:text-slate-400">Administration · Traceability</p>
-          <h1 className="mt-1 text-2xl font-semibold text-[#0f1d44] dark:text-white">Audit Reports</h1>
-          <p className="mt-1 max-w-2xl text-sm text-[#5d6f9d] dark:text-dash-muted">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Administration · Traceability</p>
+          <h1 className="mt-1 font-heading text-2xl font-semibold">Audit Reports</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Account last-login activity and stored QA/QC reports. Use this with History for document traceability.
           </p>
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={load} className="inline-flex items-center gap-1.5 rounded-lg border border-[#c4d2f0] px-3 py-1.5 text-xs font-semibold dark:border-dash-border dark:text-white">
-            <RefreshCw size={13} /> Refresh
-          </button>
-          <Link to={`${QA_QC_BASE}/history`} className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B4D99] px-3 py-1.5 text-xs font-semibold text-white dark:bg-blue-600">
-            <BookOpen size={13} /> Open History
-          </Link>
+          <Button type="button" variant="outline" size="sm" onClick={load}>
+            <RefreshCw /> Refresh
+          </Button>
+          <Button asChild size="sm">
+            <Link to={`${QA_QC_BASE}/history`}>
+              <BookOpen /> Open History
+            </Link>
+          </Button>
         </div>
       </div>
 
-      {error ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -106,93 +125,95 @@ export default function AuditReports() {
           ['Stored reports', stats.reports],
           ['Departments', stats.departments],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-xl border border-[#c4d2f0] bg-white px-4 py-3 dark:border-dash-border dark:bg-dash-surface">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#7a8794] dark:text-slate-400">{label}</p>
-            <p className="mt-1 text-3xl font-bold text-[#0f1d44] dark:text-white">{loading ? '—' : value}</p>
-          </div>
+          <Card key={label} size="sm">
+            <CardHeader>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+              <CardTitle className="text-3xl">{loading ? '—' : value}</CardTitle>
+            </CardHeader>
+          </Card>
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[#c4d2f0] bg-white dark:border-dash-border dark:bg-dash-surface">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#cfd9ee] px-4 py-3 dark:border-dash-border">
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setTab('access')} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tab === 'access' ? 'bg-[#0B4D99] text-white' : 'border border-[#c4d2f0] dark:border-dash-border dark:text-white'}`}>
-              <span className="inline-flex items-center gap-1"><Users size={12} /> Access</span>
-            </button>
-            <button type="button" onClick={() => setTab('reports')} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tab === 'reports' ? 'bg-[#0B4D99] text-white' : 'border border-[#c4d2f0] dark:border-dash-border dark:text-white'}`}>
-              <span className="inline-flex items-center gap-1"><FileSearch size={12} /> QA/QC reports</span>
-            </button>
-          </div>
-          <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-[#c4d2f0] bg-[#f8fbff] px-3 py-1.5 dark:border-dash-border dark:bg-dash-surface-elevated sm:max-w-sm">
-            <Search size={14} className="text-[#7a8794]" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={tab === 'access' ? 'Search users' : 'Search reports'} className="w-full bg-transparent text-sm outline-none dark:text-white" />
-          </div>
-        </div>
+      <Card className="overflow-hidden py-0">
+        <Tabs value={tab} onValueChange={setTab}>
+          <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 border-b py-3">
+            <TabsList>
+              <TabsTrigger value="access"><Users /> Access</TabsTrigger>
+              <TabsTrigger value="reports"><FileSearch /> QA/QC reports</TabsTrigger>
+            </TabsList>
+            <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={tab === 'access' ? 'Search users' : 'Search reports'}
+                className="pl-8"
+              />
+            </div>
+          </CardHeader>
 
-        {tab === 'access' ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-[#e8eef8] text-xs uppercase tracking-wide text-[#415e99] dark:bg-[#1c2533] dark:text-slate-200">
-                <tr>
-                  <th className="px-4 py-3">User</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Last login</th>
-                  <th className="px-4 py-3">Account created</th>
-                </tr>
-              </thead>
-              <tbody>
+          <TabsContent value="access">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Last login</TableHead>
+                  <TableHead>Account created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {loading ? (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-[#5d6f9d]">Loading…</td></tr>
+                  <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : accessRows.length ? accessRows.map((item) => (
-                  <tr key={item.user_id} className="border-t border-[#e4ebf7] odd:bg-white even:bg-[#f7faff] dark:border-[#2a3548] dark:odd:bg-[#151b27] dark:even:bg-[#1a2230]">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-[#0f1d44] dark:text-white">{item.username}</p>
-                      <p className="text-xs text-[#7a8794]">{item.email}</p>
-                    </td>
-                    <td className="px-4 py-3">{roleName(roles, item.role_id)}</td>
-                    <td className="px-4 py-3 text-[#5d6f9d]">{formatWhen(item.last_login_at)}</td>
-                    <td className="px-4 py-3 text-[#5d6f9d]">{formatWhen(item.created_at)}</td>
-                  </tr>
+                  <TableRow key={item.user_id}>
+                    <TableCell>
+                      <p className="font-medium">{item.username}</p>
+                      <p className="text-xs text-muted-foreground">{item.email}</p>
+                    </TableCell>
+                    <TableCell>{roleName(roles, item.role_id)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatWhen(item.last_login_at)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatWhen(item.created_at)}</TableCell>
+                  </TableRow>
                 )) : (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-[#5d6f9d]">No access records match.</td></tr>
+                  <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No access records match.</TableCell></TableRow>
                 )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-[#e8eef8] text-xs uppercase tracking-wide text-[#415e99] dark:bg-[#1c2533] dark:text-slate-200">
-                <tr>
-                  <th className="px-4 py-3">Document</th>
-                  <th className="px-4 py-3">Department</th>
-                  <th className="px-4 py-3">Checked by</th>
-                  <th className="px-4 py-3">Checked at</th>
-                  <th className="px-4 py-3">Score</th>
-                </tr>
-              </thead>
-              <tbody>
+              </TableBody>
+            </Table>
+          </TabsContent>
+          <TabsContent value="reports">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Document</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Checked by</TableHead>
+                  <TableHead>Checked at</TableHead>
+                  <TableHead>Score</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {loading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-[#5d6f9d]">Loading…</td></tr>
+                  <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : reportRows.length ? reportRows.map((item) => (
-                  <tr key={item.id} className="border-t border-[#e4ebf7] odd:bg-white even:bg-[#f7faff] dark:border-[#2a3548] dark:odd:bg-[#151b27] dark:even:bg-[#1a2230]">
-                    <td className="max-w-[280px] px-4 py-3">
-                      <Link to={`${QA_QC_BASE}/history?id=${item.id}`} className="font-medium text-[#0B4D99] hover:underline dark:text-blue-300">{item.file_name}</Link>
-                      <p className="truncate text-xs text-[#7a8794]">{item.report_title}</p>
-                    </td>
-                    <td className="px-4 py-3">{item.document_type || '—'}</td>
-                    <td className="px-4 py-3">{item.checked_by || '—'}</td>
-                    <td className="px-4 py-3 text-[#5d6f9d]">{formatWhen(item.created_at)}</td>
-                    <td className="px-4 py-3 font-semibold">{item.score == null ? '—' : `${item.score}%`}</td>
-                  </tr>
+                  <TableRow key={item.id}>
+                    <TableCell className="max-w-[280px]">
+                      <Link to={`${QA_QC_BASE}/history?id=${item.id}`} className="font-medium text-primary hover:underline">{item.file_name}</Link>
+                      <p className="truncate text-xs text-muted-foreground">{item.report_title}</p>
+                    </TableCell>
+                    <TableCell>{item.document_type || '—'}</TableCell>
+                    <TableCell>{item.checked_by || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatWhen(item.created_at)}</TableCell>
+                    <TableCell className="font-semibold">{item.score == null ? '—' : `${item.score}%`}</TableCell>
+                  </TableRow>
                 )) : (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-[#5d6f9d]">No report records match.</td></tr>
+                  <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No report records match.</TableCell></TableRow>
                 )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </TableBody>
+            </Table>
+          </TabsContent>
+        </Tabs>
+      </Card>
     </div>
   );
 }

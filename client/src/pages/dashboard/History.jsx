@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import {
   Clock,
   Eye,
@@ -11,7 +11,6 @@ import {
   Table2,
   Trash2,
   UploadCloud,
-  X,
 } from 'lucide-react';
 import ConfirmDialog from '@/components/Common/ConfirmDialog';
 import ReportMarkdownView from '@/components/Common/ReportMarkdownView';
@@ -22,6 +21,36 @@ import {
   fetchProcessReport,
   printProcessReportPdf,
 } from '@/services/processReportService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 function isSameDay(value) {
   if (!value) return false;
@@ -34,35 +63,15 @@ function isSameDay(value) {
 
 function scoreMeta(score) {
   if (score == null) {
-    return {
-      label: 'Unscored',
-      value: '—',
-      text: 'text-[#7a8794] dark:text-slate-400',
-      badge: 'bg-[#eef2f7] text-[#5d6f9d] dark:bg-[#243044] dark:text-slate-300',
-    };
+    return { label: 'Unscored', value: '—', variant: 'secondary' };
   }
   if (score >= 90) {
-    return {
-      label: 'Approved',
-      value: `${score}%`,
-      text: 'text-emerald-600 dark:text-emerald-400',
-      badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-    };
+    return { label: 'Approved', value: `${score}%`, variant: 'secondary' };
   }
   if (score >= 75) {
-    return {
-      label: 'With comments',
-      value: `${score}%`,
-      text: 'text-amber-600 dark:text-amber-400',
-      badge: 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
-    };
+    return { label: 'With comments', value: `${score}%`, variant: 'outline' };
   }
-  return {
-    label: 'Rework',
-    value: `${score}%`,
-    text: 'text-red-600 dark:text-red-400',
-    badge: 'bg-red-500/15 text-red-700 dark:text-red-300',
-  };
+  return { label: 'Rework', value: `${score}%`, variant: 'destructive' };
 }
 
 function matchesScoreBand(score, band) {
@@ -105,14 +114,6 @@ export default function History({ title = 'QA/QC History' }) {
   useEffect(() => {
     loadHistory();
   }, []);
-
-  useEffect(() => {
-    const onKey = (event) => {
-      if (event.key === 'Escape' && (report || reportLoading || params.get('id'))) closeReport();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [report, reportLoading, params]);
 
   useEffect(() => {
     const id = params.get('id');
@@ -212,284 +213,262 @@ export default function History({ title = 'QA/QC History' }) {
     <div className="space-y-5 p-4 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7a8794] dark:text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Workspace · Archive
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-[#0f1d44] dark:text-white">{title}</h1>
-          <p className="mt-1 max-w-2xl text-sm text-[#5d6f9d] dark:text-dash-muted">
+          <h1 className="mt-1 font-heading text-2xl font-semibold">{title}</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Stored QA/QC reports with scores, reviewers, and PDF export. Open a report to review findings or delete records you no longer need.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs text-[#7a8794] dark:text-slate-300">
+          <p className="text-xs text-muted-foreground">
             Last synced: {syncedAt ? syncedAt.toLocaleTimeString() : '—'}
           </p>
-          <button
-            type="button"
-            onClick={loadHistory}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#c4d2f0] px-3 py-1.5 text-xs font-semibold text-[#2e4f8f] hover:bg-[#e8f0ff] dark:border-dash-border dark:text-white dark:hover:bg-dash-surface-elevated"
-          >
-            <RefreshCw size={13} /> Refresh
-          </button>
-          <Link
-            to={QA_QC_PROCESS}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B4D99] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#083a73] dark:bg-blue-600 dark:hover:bg-blue-500"
-          >
-            <UploadCloud size={13} /> New review
-          </Link>
+          <Button type="button" variant="outline" size="sm" onClick={loadHistory}>
+            <RefreshCw /> Refresh
+          </Button>
+          <Button asChild size="sm">
+            <Link to={QA_QC_PROCESS}>
+              <UploadCloud /> New review
+            </Link>
+          </Button>
         </div>
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Stored reports', value: stats.total, tone: 'text-[#0f1d44] dark:text-white' },
-          { label: 'Average QC score', value: stats.avg == null ? '—' : `${stats.avg}%`, tone: 'text-blue-600 dark:text-blue-400' },
-          { label: 'Reviewed today', value: stats.today, tone: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'Departments', value: stats.departments, tone: 'text-[#0B4D99] dark:text-blue-300' },
+          { label: 'Stored reports', value: stats.total },
+          { label: 'Average QC score', value: stats.avg == null ? '—' : `${stats.avg}%` },
+          { label: 'Reviewed today', value: stats.today },
+          { label: 'Departments', value: stats.departments },
         ].map((card) => (
-          <div key={card.label} className="rounded-xl border border-[#c4d2f0] bg-white px-4 py-3 dark:border-dash-border dark:bg-dash-surface">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#7a8794] dark:text-slate-400">{card.label}</p>
-            <p className={`mt-1 text-3xl font-bold ${card.tone}`}>{loading ? '—' : card.value}</p>
-          </div>
+          <Card key={card.label} size="sm">
+            <CardHeader>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{card.label}</p>
+              <CardTitle className="text-3xl">{loading ? '—' : card.value}</CardTitle>
+            </CardHeader>
+          </Card>
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[#c4d2f0] bg-white dark:border-dash-border dark:bg-dash-surface">
-        <div className="flex flex-col gap-3 border-b border-[#cfd9ee] px-4 py-3 dark:border-dash-border">
-          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-[#c4d2f0] bg-[#f8fbff] px-3 py-1.5 dark:border-dash-border dark:bg-dash-surface-elevated">
-            <Search size={14} className="text-[#7a8794]" />
-            <input
+      <Card className="overflow-hidden py-0">
+        <CardHeader className="gap-3 border-b py-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search file, reviewer, or document type"
-              className="w-full bg-transparent text-sm text-[#0f1d44] outline-none placeholder:text-[#8a9bb8] dark:text-white"
+              className="pl-8"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2 text-xs text-[#5d6f9d] dark:text-slate-300">
-              Department
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="rounded-lg border border-[#c4d2f0] bg-white px-2 py-1.5 text-sm dark:border-dash-border dark:bg-dash-surface-elevated dark:text-white"
-              >
-                {departments.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-xs text-[#5d6f9d] dark:text-slate-300">
-              Score
-              <select
-                value={scoreBand}
-                onChange={(e) => setScoreBand(e.target.value)}
-                className="rounded-lg border border-[#c4d2f0] bg-white px-2 py-1.5 text-sm dark:border-dash-border dark:bg-dash-surface-elevated dark:text-white"
-              >
-                <option value="all">All</option>
-                <option value="high">Approved (≥90)</option>
-                <option value="medium">With comments (75–89)</option>
-                <option value="low">Rework (&lt;75)</option>
-                <option value="none">Unscored</option>
-              </select>
-            </label>
-            <div className="flex rounded-lg border border-[#c4d2f0] dark:border-dash-border">
-              <button
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Department</Label>
+              <Select value={department} onValueChange={setDepartment}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Score</Label>
+              <Select value={scoreBand} onValueChange={setScoreBand}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="high">Approved (≥90)</SelectItem>
+                  <SelectItem value="medium">With comments (75–89)</SelectItem>
+                  <SelectItem value="low">Rework (&lt;75)</SelectItem>
+                  <SelectItem value="none">Unscored</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex rounded-lg border">
+              <Button
                 type="button"
+                variant={view === 'table' ? 'default' : 'ghost'}
+                size="icon-sm"
                 aria-label="Table view"
                 onClick={() => setView('table')}
-                className={`p-1.5 ${view === 'table' ? 'bg-blue-600 text-white' : 'text-[#415e99] dark:text-slate-200'}`}
               >
-                <Table2 size={14} />
-              </button>
-              <button
+                <Table2 />
+              </Button>
+              <Button
                 type="button"
+                variant={view === 'cards' ? 'default' : 'ghost'}
+                size="icon-sm"
                 aria-label="Card view"
                 onClick={() => setView('cards')}
-                className={`p-1.5 ${view === 'cards' ? 'bg-blue-600 text-white' : 'text-[#415e99] dark:text-slate-200'}`}
               >
-                <LayoutGrid size={14} />
-              </button>
+                <LayoutGrid />
+              </Button>
             </div>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setSelectedIds(allSelected ? [] : selectableIds)}
               disabled={!selectableIds.length}
-              className="rounded-lg border border-[#c4d2f0] px-3 py-1.5 text-xs font-semibold text-[#2e4f8f] disabled:opacity-50 dark:border-dash-border dark:text-white"
             >
               {allSelected ? 'Clear selection' : `Select all (${selectableIds.length})`}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="destructive"
+              size="sm"
               disabled={!selectedIds.length}
               onClick={() => setConfirmOpen(true)}
-              className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
-              <Trash2 size={12} /> Delete ({selectedIds.length})
-            </button>
+              <Trash2 /> Delete ({selectedIds.length})
+            </Button>
           </div>
-        </div>
+        </CardHeader>
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <CardContent className="grid grid-cols-1 gap-3 py-4 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="h-36 animate-pulse rounded-lg bg-[#e8eef8] dark:bg-[#1c2533]" />
+              <Skeleton key={index} className="h-36" />
             ))}
-          </div>
+          </CardContent>
         ) : !filtered.length ? (
-          <div className="flex flex-col items-center px-4 py-12 text-center">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e8f0ff] text-[#0B4D99] dark:bg-dash-surface-elevated dark:text-blue-300">
+          <CardContent className="flex flex-col items-center py-12 text-center">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
               <Clock size={22} />
             </span>
-            <p className="mt-3 text-sm font-semibold text-[#153063] dark:text-white">
+            <p className="mt-3 text-sm font-semibold">
               {history.length ? 'No reports match these filters.' : 'No report history yet.'}
             </p>
-            <p className="mt-1 max-w-md text-sm text-[#5d6f9d] dark:text-dash-muted">
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
               {history.length
                 ? 'Try a different search, department, or score band.'
                 : 'Run a discipline review and the scored report will appear here for later viewing and PDF export.'}
             </p>
             {!history.length ? (
-              <Link
-                to={QA_QC_PROCESS}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0B4D99] px-4 py-2 text-sm font-semibold text-white hover:bg-[#083a73] dark:bg-blue-600"
-              >
-                <UploadCloud size={16} /> Start a QA/QC review
-              </Link>
+              <Button asChild className="mt-4">
+                <Link to={QA_QC_PROCESS}>
+                  <UploadCloud /> Start a QA/QC review
+                </Link>
+              </Button>
             ) : null}
-          </div>
+          </CardContent>
         ) : view === 'table' ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-[#e8eef8] text-xs uppercase tracking-wide text-[#415e99] dark:bg-[#1c2533] dark:text-slate-200">
-                <tr>
-                  <th className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={() => setSelectedIds(allSelected ? [] : selectableIds)}
-                      aria-label="Select all reports"
-                    />
-                  </th>
-                  <th className="px-4 py-3">Document</th>
-                  <th className="px-4 py-3">Department</th>
-                  <th className="px-4 py-3">Checked by</th>
-                  <th className="hidden px-4 py-3 lg:table-cell">Checked at</th>
-                  <th className="px-4 py-3">Score</th>
-                  <th className="sticky right-0 bg-[#e8eef8] px-4 py-3 text-right dark:bg-[#1c2533]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((entry) => {
-                  const meta = scoreMeta(entry.score);
-                  return (
-                    <tr key={entry.id} className="border-t border-[#e4ebf7] odd:bg-white even:bg-[#f7faff] dark:border-[#2a3548] dark:odd:bg-[#151b27] dark:even:bg-[#1a2230]">
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(entry.id)}
-                          onChange={() => toggleSelected(entry.id)}
-                          aria-label={`Select ${entry.file_name}`}
-                        />
-                      </td>
-                      <td className="max-w-[280px] px-4 py-3">
-                        <p className="truncate font-medium text-[#0f1d44] dark:text-white">{entry.file_name}</p>
-                        <p className="truncate text-xs text-[#7a8794] dark:text-slate-400">{entry.report_title}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex max-w-[180px] truncate rounded-full bg-blue-600/15 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-600/25 dark:text-blue-300">
-                          {entry.document_type || '—'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[#415e99] dark:text-slate-200">{entry.checked_by || '—'}</td>
-                      <td className="hidden px-4 py-3 text-[#5d6f9d] dark:text-slate-300 lg:table-cell">
-                        {entry.created_at ? new Date(entry.created_at).toLocaleString() : '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className={`text-sm font-bold ${meta.text}`}>{meta.value}</p>
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.badge}`}>{meta.label}</span>
-                        </div>
-                      </td>
-                      <td className="sticky right-0 bg-inherit px-3 py-3">
-                        <div className="flex justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => openReport(entry.id)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
-                          >
-                            <Eye size={12} /> View
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => printReport(entry.id)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-[#9bb3e4] px-2.5 py-1.5 text-xs font-semibold text-[#2e4f8f] dark:border-slate-400 dark:text-white"
-                          >
-                            <Printer size={12} /> Print
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={() => setSelectedIds(allSelected ? [] : selectableIds)}
+                    aria-label="Select all reports"
+                  />
+                </TableHead>
+                <TableHead>Document</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Checked by</TableHead>
+                <TableHead className="hidden lg:table-cell">Checked at</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((entry) => {
+                const meta = scoreMeta(entry.score);
+                return (
+                  <TableRow key={entry.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.includes(entry.id)}
+                        onCheckedChange={() => toggleSelected(entry.id)}
+                        aria-label={`Select ${entry.file_name}`}
+                      />
+                    </TableCell>
+                    <TableCell className="max-w-[280px]">
+                      <p className="truncate font-medium">{entry.file_name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{entry.report_title}</p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{entry.document_type || '—'}</Badge>
+                    </TableCell>
+                    <TableCell>{entry.checked_by || '—'}</TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">
+                      {entry.created_at ? new Date(entry.created_at).toLocaleString() : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm font-bold">{meta.value}</p>
+                      <Badge variant={meta.variant}>{meta.label}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1.5">
+                        <Button type="button" size="sm" onClick={() => openReport(entry.id)}>
+                          <Eye /> View
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => printReport(entry.id)}>
+                          <Printer /> Print
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         ) : (
-          <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <CardContent className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((entry) => {
               const meta = scoreMeta(entry.score);
               return (
-                <article
+                <Card
                   key={entry.id}
-                  className={`flex flex-col rounded-xl border border-[#c4d2f0] bg-[#f8fbff] p-4 dark:border-dash-border dark:bg-dash-surface-elevated ${
-                    selectedIds.includes(entry.id) ? 'ring-2 ring-blue-500' : ''
-                  }`}
+                  size="sm"
+                  className={selectedIds.includes(entry.id) ? 'ring-2 ring-ring' : ''}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <input
-                      type="checkbox"
+                  <CardHeader className="flex-row items-start justify-between gap-2">
+                    <Checkbox
                       checked={selectedIds.includes(entry.id)}
-                      onChange={() => toggleSelected(entry.id)}
+                      onCheckedChange={() => toggleSelected(entry.id)}
                       aria-label={`Select ${entry.file_name}`}
                     />
-                    <span className="text-xs text-[#7a8794] dark:text-slate-300">
+                    <span className="text-xs text-muted-foreground">
                       {entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}
                     </span>
-                  </div>
-                  <p className="mt-3 line-clamp-2 font-semibold text-[#0f1d44] dark:text-white">{entry.file_name}</p>
-                  <p className="mt-2 text-sm text-[#5d6f9d] dark:text-slate-300">{entry.document_type || '—'}</p>
-                  <p className="text-sm text-[#5d6f9d] dark:text-slate-300">Checked by: {entry.checked_by || '—'}</p>
-                  <p className={`mt-auto pt-3 text-lg font-bold ${meta.text}`}>{meta.value}</p>
-                  <span className={`mt-1 w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.badge}`}>{meta.label}</span>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openReport(entry.id)}
-                      className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
-                    >
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printReport(entry.id)}
-                      className="rounded-lg border border-[#9bb3e4] px-3 py-1.5 text-xs font-semibold text-[#2e4f8f] dark:border-slate-400 dark:text-white"
-                    >
-                      Print
-                    </button>
-                  </div>
-                </article>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="line-clamp-2 font-semibold">{entry.file_name}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{entry.document_type || '—'}</p>
+                    <p className="text-sm text-muted-foreground">Checked by: {entry.checked_by || '—'}</p>
+                    <p className="mt-3 text-lg font-bold">{meta.value}</p>
+                    <Badge variant={meta.variant} className="mt-1">{meta.label}</Badge>
+                    <div className="mt-3 flex gap-2">
+                      <Button type="button" size="sm" className="flex-1" onClick={() => openReport(entry.id)}>
+                        View
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => printReport(entry.id)}>
+                        Print
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })}
-          </div>
+          </CardContent>
         )}
-      </section>
+      </Card>
 
       <ConfirmDialog
         open={confirmOpen}
@@ -501,44 +480,26 @@ export default function History({ title = 'QA/QC History' }) {
         onClose={() => !deleting && setConfirmOpen(false)}
       />
 
-      {report || reportLoading ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6">
-          <button type="button" aria-label="Close report" onClick={closeReport} className="absolute inset-0 bg-black/55" />
-          <div className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#c4d2f0] bg-white shadow-2xl dark:border-dash-border dark:bg-dash-surface">
-            <div className="flex items-center justify-between border-b px-4 py-3 dark:border-dash-border">
-              <h2 className="text-base font-semibold text-[#153063] dark:text-white">
-                {report?.report_title || 'QA/QC Report'}
-              </h2>
-              <div className="flex items-center gap-2">
-                {report?.id ? (
-                  <button
-                    type="button"
-                    onClick={() => printReport(report.id)}
-                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"
-                  >
-                    Print PDF
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  aria-label="Close report"
-                  onClick={closeReport}
-                  className="rounded-lg border p-2 dark:border-dash-border dark:text-white"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 dark:bg-[#0b0f16]">
-              {reportLoading && !report ? (
-                <p className="text-sm text-[#5d6f9d] dark:text-slate-300">Loading report…</p>
-              ) : (
-                <ReportMarkdownView markdown={report?.report_markdown} />
-              )}
-            </div>
+      <Dialog open={Boolean(report || reportLoading)} onOpenChange={(open) => { if (!open) closeReport(); }}>
+        <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col overflow-hidden sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>{report?.report_title || 'QA/QC Report'}</DialogTitle>
+            <DialogDescription>Review findings and print a PDF copy.</DialogDescription>
+          </DialogHeader>
+          {report?.id ? (
+            <Button type="button" size="sm" className="w-fit" onClick={() => printReport(report.id)}>
+              <Printer /> Print PDF
+            </Button>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {reportLoading && !report ? (
+              <p className="text-sm text-muted-foreground">Loading report…</p>
+            ) : (
+              <ReportMarkdownView markdown={report?.report_markdown} />
+            )}
           </div>
-        </div>
-      ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,8 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Printer, X } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import ReportMarkdownView from '@/components/Common/ReportMarkdownView';
 import { fetchProcessHistory, fetchProcessReport, printProcessReportPdf } from '@/services/processReportService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 function isSameDay(value) {
   if (!value) return false;
@@ -72,121 +99,116 @@ export default function AIReview() {
     <div className="space-y-5 p-4 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-[#0f1d44] dark:text-white">AI Review Inbox</h1>
-          <p className="mt-1 text-sm text-[#5d6f9d] dark:text-dash-muted">Checked files across departments, ready to view or print.</p>
+          <h1 className="font-heading text-2xl font-semibold">AI Review Inbox</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Checked files across departments, ready to view or print.</p>
         </div>
-        <p className="text-xs text-[#7a8794] dark:text-slate-300">
+        <p className="text-xs text-muted-foreground">
           Last synced: {syncedAt ? syncedAt.toLocaleTimeString() : '—'}
         </p>
       </div>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-3">
         {[
-          { label: 'Total Reports', value: stats.total, tone: 'text-[#0f1d44] dark:text-white' },
-          { label: 'Departments Covered', value: stats.departments, tone: 'text-emerald-600 dark:text-emerald-400' },
-          { label: 'Reviewed Today', value: stats.today, tone: 'text-blue-600 dark:text-blue-400' },
+          { label: 'Total Reports', value: stats.total },
+          { label: 'Departments Covered', value: stats.departments },
+          { label: 'Reviewed Today', value: stats.today },
         ].map((card) => (
-          <div key={card.label} className="rounded-xl border border-[#c4d2f0] bg-white px-4 py-3 dark:border-dash-border dark:bg-dash-surface">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#7a8794] dark:text-slate-400">{card.label}</p>
-            <p className={`mt-1 text-3xl font-bold ${card.tone}`}>{card.value}</p>
-          </div>
+          <Card key={card.label} size="sm">
+            <CardHeader>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{card.label}</p>
+              <CardTitle className="text-3xl">{card.value}</CardTitle>
+            </CardHeader>
+          </Card>
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[#c4d2f0] bg-white dark:border-dash-border dark:bg-dash-surface">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#cfd9ee] px-4 py-3 dark:border-dash-border">
-          <h2 className="text-sm font-semibold text-[#153063] dark:text-white">Checked Files</h2>
-          <label className="flex items-center gap-2 text-xs text-[#5d6f9d] dark:text-slate-300">
-            Department
-            <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="rounded-lg border border-[#c4d2f0] bg-white px-2 py-1.5 text-sm dark:border-dash-border dark:bg-dash-surface-elevated dark:text-white"
-            >
-              {departments.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-[#e8eef8] text-xs uppercase tracking-wide text-[#415e99] dark:bg-[#1c2533] dark:text-slate-200">
-              <tr>
-                <th className="px-4 py-3">S.No</th>
-                <th className="px-4 py-3">Department</th>
-                <th className="px-4 py-3">Checked File</th>
-                <th className="px-4 py-3">Checked By</th>
-                <th className="px-4 py-3">Checked At</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length ? rows.map((item, index) => (
-                <tr key={item.id} className="border-t border-[#e4ebf7] odd:bg-white even:bg-[#f7faff] dark:border-[#2a3548] dark:odd:bg-[#151b27] dark:even:bg-[#1a2230]">
-                  <td className="px-4 py-3 text-[#5d6f9d] dark:text-slate-300">{index + 1}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex max-w-[180px] truncate rounded-full bg-blue-600/15 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-600/25 dark:text-blue-300">
-                      {item.document_type || '—'}
-                    </span>
-                  </td>
-                  <td className="max-w-[280px] truncate px-4 py-3 font-medium text-[#0f1d44] dark:text-white">{item.file_name}</td>
-                  <td className="px-4 py-3 text-[#415e99] dark:text-slate-200">{item.checked_by || '—'}</td>
-                  <td className="px-4 py-3 text-[#5d6f9d] dark:text-slate-300">
-                    {item.created_at ? new Date(item.created_at).toLocaleString() : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openReport(item.id)}
-                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => printProcessReportPdf(item.id).catch((err) => setError(err.message))}
-                        className="inline-flex items-center gap-1 rounded-lg border border-[#9bb3e4] px-3 py-1.5 text-xs font-semibold text-[#2e4f8f] dark:border-slate-400 dark:text-white"
-                      >
-                        <Printer size={12} /> Print
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#5d6f9d] dark:text-slate-300">
-                    No checked files yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {report ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6">
-          <button type="button" aria-label="Close report" onClick={closeReport} className="absolute inset-0 bg-black/55" />
-          <div className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#c4d2f0] bg-white shadow-2xl dark:border-dash-border dark:bg-dash-surface">
-            <div className="flex items-center justify-between border-b px-4 py-3 dark:border-dash-border">
-              <h2 className="text-base font-semibold text-[#153063] dark:text-white">{report.report_title || 'QA/QC Report'}</h2>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => printProcessReportPdf(report.id)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">
-                  Print PDF
-                </button>
-                <button type="button" onClick={closeReport} className="rounded-lg border p-2 dark:border-dash-border dark:text-white"><X size={18} /></button>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 dark:bg-[#0b0f16]">
-              <ReportMarkdownView markdown={report.report_markdown} />
-            </div>
+      <Card className="overflow-hidden py-0">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 border-b py-3">
+          <CardTitle className="text-sm">Checked Files</CardTitle>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">Department</Label>
+            <Select value={department} onValueChange={setDepartment}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      ) : null}
+        </CardHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>S.No</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Checked File</TableHead>
+              <TableHead>Checked By</TableHead>
+              <TableHead>Checked At</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length ? rows.map((item, index) => (
+              <TableRow key={item.id}>
+                <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{item.document_type || '—'}</Badge>
+                </TableCell>
+                <TableCell className="max-w-[280px] truncate font-medium">{item.file_name}</TableCell>
+                <TableCell>{item.checked_by || '—'}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {item.created_at ? new Date(item.created_at).toLocaleString() : '—'}
+                </TableCell>
+                <TableCell>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" size="sm" onClick={() => openReport(item.id)}>View</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => printProcessReportPdf(item.id).catch((err) => setError(err.message))}
+                    >
+                      <Printer /> Print
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )) : (
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  No checked files yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Dialog open={Boolean(report)} onOpenChange={(open) => { if (!open) closeReport(); }}>
+        <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col overflow-hidden sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>{report?.report_title || 'QA/QC Report'}</DialogTitle>
+            <DialogDescription>Print or review the stored analysis.</DialogDescription>
+          </DialogHeader>
+          {report?.id ? (
+            <Button type="button" size="sm" className="w-fit" onClick={() => printProcessReportPdf(report.id)}>
+              <Printer /> Print PDF
+            </Button>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ReportMarkdownView markdown={report?.report_markdown} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, ExternalLink, Loader2, Play, Search, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '@/config';
 import { getAccessToken } from '@/lib/axios';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const METHOD_STYLES = {
   get: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
@@ -217,53 +224,52 @@ export default function ApiDocs() {
   const tokenPresent = Boolean(getAccessToken());
 
   return (
-    <div className="p-6">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-6 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#0B4D99] dark:text-white">API documentation</h1>
-          <p className="mt-1 max-w-2xl text-sm text-[#4f6490] dark:text-dash-muted">
+          <h1 className="font-heading text-2xl font-semibold">API documentation</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Every backend route, with request shapes and a live Try it panel using your current session.
           </p>
         </div>
-        <a
-          href={swaggerUiUrl()}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg bg-[#0B4D99] px-4 py-2 text-sm font-medium text-white hover:bg-[#093d7a]"
-        >
-          <BookOpen size={16} />
-          Open Swagger UI
-          <ExternalLink size={14} />
-        </a>
+        <Button asChild>
+          <a href={swaggerUiUrl()} target="_blank" rel="noreferrer">
+            <BookOpen />
+            Open Swagger UI
+            <ExternalLink />
+          </a>
+        </Button>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="relative min-w-[240px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-[#7a8794]" />
-          <input
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search method, path, or tag"
-            className="w-full rounded-lg border border-[#c4d2f0] bg-white py-2 pl-9 pr-3 text-sm dark:border-dash-border dark:bg-dash-surface dark:text-white"
+            className="pl-8"
           />
-        </label>
-        <span className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs ${tokenPresent ? 'border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300' : 'border-[#c4d2f0] text-[#7a8794]'}`}>
-          <ShieldCheck size={14} />
+        </div>
+        <Badge variant={tokenPresent ? 'secondary' : 'outline'}>
+          <ShieldCheck />
           {tokenPresent ? 'Session token attached to Try it' : 'Login first for protected routes'}
-        </span>
+        </Badge>
       </div>
 
       {error ? (
-        <p className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : !spec ? (
-        <p className="flex items-center gap-2 text-sm text-[#4f6490]">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading OpenAPI spec…
         </p>
       ) : (
         <div className="space-y-6">
           {grouped.map(([tag, ops]) => (
             <section key={tag}>
-              <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-[#7a8794]">{tag}</h2>
+              <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">{tag}</h2>
               <div className="space-y-2">
                 {ops.map((op) => {
                   const expanded = openId === op.id;
@@ -271,7 +277,7 @@ export default function ApiDocs() {
                   const pathParams = resolvedParams.filter((p) => p.in === 'path');
                   const queryParams = resolvedParams.filter((p) => p.in === 'query');
                   return (
-                    <article key={op.id} className="overflow-hidden rounded-2xl border border-[#c4d2f0] bg-white dark:border-dash-border dark:bg-dash-surface">
+                    <Card key={op.id} className="overflow-hidden py-0">
                       <button
                         type="button"
                         onClick={() => toggle(op)}
@@ -280,104 +286,93 @@ export default function ApiDocs() {
                         <span className={`w-16 rounded-md px-2 py-0.5 text-center text-[11px] font-bold uppercase ${METHOD_STYLES[op.method] || METHOD_STYLES.get}`}>
                           {op.method}
                         </span>
-                        <code className="text-sm font-semibold text-[#0c2340] dark:text-white">{op.path}</code>
-                        <span className="hidden text-sm text-[#4f6490] sm:inline dark:text-slate-300">{op.summary}</span>
+                        <code className="text-sm font-semibold">{op.path}</code>
+                        <span className="hidden text-sm text-muted-foreground sm:inline">{op.summary}</span>
                       </button>
                       {expanded && (
-                        <div className="space-y-4 border-t border-[#e4ebf7] px-4 py-4 dark:border-dash-border">
-                          {op.description ? <p className="whitespace-pre-wrap text-sm text-[#4f6490] dark:text-slate-300">{op.description}</p> : null}
+                        <CardContent className="space-y-4 border-t py-4">
+                          {op.description ? <p className="whitespace-pre-wrap text-sm text-muted-foreground">{op.description}</p> : null}
                           {pathParams.map((param) => (
-                            <label key={param.name} className="block text-sm">
-                              <span className="font-medium">{param.name} (path)</span>
-                              <input
+                            <div key={param.name} className="space-y-1.5">
+                              <Label>{param.name} (path)</Label>
+                              <Input
                                 value={pathValues[param.name] || ''}
                                 onChange={(e) => setPathValues((prev) => ({ ...prev, [param.name]: e.target.value }))}
-                                className="mt-1 w-full rounded-lg border border-[#c4d2f0] px-3 py-2 dark:border-dash-border dark:bg-dash-surface-elevated"
                                 placeholder={param.schema?.example || param.name}
                               />
-                            </label>
+                            </div>
                           ))}
                           {queryParams.map((param) => (
-                            <label key={param.name} className="block text-sm">
-                              <span className="font-medium">{param.name} (query)</span>
-                              <input
+                            <div key={param.name} className="space-y-1.5">
+                              <Label>{param.name} (query)</Label>
+                              <Input
                                 value={queryValues[param.name] || ''}
                                 onChange={(e) => setQueryValues((prev) => ({ ...prev, [param.name]: e.target.value }))}
-                                className="mt-1 w-full rounded-lg border border-[#c4d2f0] px-3 py-2 dark:border-dash-border dark:bg-dash-surface-elevated"
                                 placeholder={String(param.schema?.default ?? '')}
                               />
-                            </label>
+                            </div>
                           ))}
                           {isMultipart(op) ? (
                             <div className="grid gap-3 sm:grid-cols-2">
-                              <label className="text-sm">
-                                Document type
-                                <input
+                              <div className="space-y-1.5">
+                                <Label>Document type</Label>
+                                <Input
                                   value={formFields.documentType}
                                   onChange={(e) => setFormFields((prev) => ({ ...prev, documentType: e.target.value }))}
-                                  className="mt-1 w-full rounded-lg border border-[#c4d2f0] px-3 py-2 dark:border-dash-border dark:bg-dash-surface-elevated"
                                 />
-                              </label>
-                              <label className="text-sm">
-                                Report category
-                                <input
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label>Report category</Label>
+                                <Input
                                   value={formFields.reportCategory}
                                   onChange={(e) => setFormFields((prev) => ({ ...prev, reportCategory: e.target.value }))}
-                                  className="mt-1 w-full rounded-lg border border-[#c4d2f0] px-3 py-2 dark:border-dash-border dark:bg-dash-surface-elevated"
                                   placeholder="process"
                                 />
-                              </label>
-                              <label className="text-sm">
-                                Main documents
-                                <input
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label>Main documents</Label>
+                                <Input
                                   type="file"
                                   multiple
-                                  className="mt-1 w-full text-sm"
                                   onChange={(e) => setFiles((prev) => ({ ...prev, mainDocument: [...e.target.files] }))}
                                 />
-                              </label>
-                              <label className="text-sm">
-                                Support documents
-                                <input
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label>Support documents</Label>
+                                <Input
                                   type="file"
                                   multiple
-                                  className="mt-1 w-full text-sm"
                                   onChange={(e) => setFiles((prev) => ({ ...prev, supportDocument: [...e.target.files] }))}
                                 />
-                              </label>
+                              </div>
                             </div>
                           ) : jsonBodySchema(op) || op.requestBody ? (
-                            <label className="block text-sm">
-                              Request body
-                              <textarea
+                            <div className="space-y-1.5">
+                              <Label>Request body</Label>
+                              <Textarea
                                 value={bodyText}
                                 onChange={(e) => setBodyText(e.target.value)}
                                 rows={8}
-                                className="mt-1 w-full rounded-lg border border-[#c4d2f0] px-3 py-2 font-mono text-xs dark:border-dash-border dark:bg-dash-surface-elevated"
+                                className="font-mono text-xs"
                               />
-                            </label>
+                            </div>
                           ) : null}
-                          <button
-                            type="button"
-                            onClick={() => run(op)}
-                            disabled={running}
-                            className="inline-flex items-center gap-2 rounded-lg bg-[#0B4D99] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                          >
-                            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play size={14} />}
+                          <Button type="button" onClick={() => run(op)} disabled={running}>
+                            {running ? <Loader2 className="animate-spin" /> : <Play />}
                             Try it
-                          </button>
+                          </Button>
                           <div>
-                            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#7a8794]">Responses</p>
+                            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Responses</p>
                             <div className="flex flex-wrap gap-2">
                               {Object.entries(op.responses).map(([code, resp]) => (
-                                <span key={code} className="rounded-md bg-[#eef2f7] px-2 py-1 text-xs dark:bg-[#1e293b]">
+                                <Badge key={code} variant="secondary">
                                   {code} {resp.description}
-                                </span>
+                                </Badge>
                               ))}
                             </div>
                           </div>
                           {result && (
-                            <pre className="max-h-80 overflow-auto rounded-xl bg-[#0c2340] p-3 text-xs text-slate-100">
+                            <pre className="max-h-80 overflow-auto rounded-xl bg-foreground p-3 text-xs text-background">
                               <span className={statusColor(result.status)}>
                                 {result.status} {result.statusText}
                               </span>
@@ -385,9 +380,9 @@ export default function ApiDocs() {
                               {result.body}
                             </pre>
                           )}
-                        </div>
+                        </CardContent>
                       )}
-                    </article>
+                    </Card>
                   );
                 })}
               </div>

@@ -1,26 +1,48 @@
 import { getThemeMode, setThemeMode } from '@/lib/theme';
 import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function Settings() {
   const [mode, setMode] = useState(getThemeMode());
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-[#0B4D99] dark:text-white">Settings</h1>
-      <div className="mt-4 max-w-lg rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface">
-        <label className="text-sm font-medium">Theme</label>
-        <select
-          value={mode}
-          onChange={(e) => {
-            setMode(e.target.value);
-            setThemeMode(e.target.value);
-          }}
-          className="mt-2 w-full rounded-lg border border-[#c4d2f0] bg-white px-3 py-2 dark:border-dash-border dark:bg-dash-surface-elevated dark:text-white"
-        >
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="system">System</option>
-        </select>
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Appearance for this browser session.</p>
       </div>
+      <Card className="max-w-lg">
+        <CardHeader>
+          <CardTitle>Theme</CardTitle>
+          <CardDescription>Light, dark, or follow the system preference.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="theme-mode" className="sr-only">Theme</Label>
+          <Select
+            value={mode}
+            onValueChange={(value) => {
+              setMode(value);
+              setThemeMode(value);
+            }}
+          >
+            <SelectTrigger id="theme-mode" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="light">Light</SelectItem>
+              <SelectItem value="dark">Dark</SelectItem>
+              <SelectItem value="system">System</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
     </div>
   );
 }

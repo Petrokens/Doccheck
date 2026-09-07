@@ -3,9 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { loginUser } from '@/services/authService';
 import { useSessionAuth } from '@/context/SessionAuthContext';
 import { publicApiError } from '@/lib/uploadSafety';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import logoMark from '@/assets/petrolenz-favicon.png';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const REMEMBER_EMAIL_KEY = 'petrolenz.rememberEmail';
 
@@ -53,22 +57,20 @@ export default function LoginForm() {
       <div className="flex items-center justify-center gap-2">
         <img src={logoMark} alt="" className="h-10 w-10 object-contain" />
         <span
-          className="text-[26px] font-bold tracking-[0.06em] text-[#1c2434]"
+          className="text-[26px] font-bold tracking-[0.06em] text-foreground"
           style={{ fontFamily: 'Merriweather, Georgia, serif' }}
         >
           PETROLENZ
         </span>
       </div>
 
-      <h1 className="mt-4 text-center text-[28px] font-bold leading-none text-[#111827]">Login</h1>
-      <p className="mt-1.5 text-center text-[13px] text-[#8b95a7]">AI QC Checker for Engineering Documents</p>
+      <h1 className="mt-4 text-center font-heading text-[28px] font-bold leading-none">Login</h1>
+      <p className="mt-1.5 text-center text-[13px] text-muted-foreground">AI QC Checker for Engineering Documents</p>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
-        <div>
-          <label htmlFor="email" className="mb-1.5 block text-[13px] font-medium text-[#374151]">
-            Email
-          </label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
             id="email"
             name="email"
             type="email"
@@ -77,16 +79,14 @@ export default function LoginForm() {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             placeholder="Enter your email"
-            className="h-11 w-full rounded-xl bg-[#eef2f7] px-4 text-[14px] text-[#111827] outline-none ring-0 transition placeholder:text-[#9aa3b5] focus:bg-[#e8eef8] focus:ring-2 focus:ring-[#4A86F7]/35"
+            className="h-11 bg-muted"
           />
         </div>
 
-        <div>
-          <label htmlFor="password" className="mb-1.5 block text-[13px] font-medium text-[#374151]">
-            Password
-          </label>
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
           <div className="relative">
-            <input
+            <Input
               id="password"
               name="password"
               type={showPassword ? 'text' : 'password'}
@@ -95,44 +95,40 @@ export default function LoginForm() {
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder="Enter your password"
-              className="h-11 w-full rounded-xl bg-[#eef2f7] px-4 pr-11 text-[14px] text-[#111827] outline-none transition placeholder:text-[#9aa3b5] focus:bg-[#e8eef8] focus:ring-2 focus:ring-[#4A86F7]/35"
+              className="h-11 bg-muted pr-11"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9aa3b5] hover:text-[#64748b]"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+              {showPassword ? <EyeOff /> : <Eye />}
+            </Button>
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-0.5">
-          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[#6b7280]">
-            <input
-              type="checkbox"
+          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-muted-foreground">
+            <Checkbox
               checked={rememberEmail}
-              onChange={(e) => setRememberEmail(e.target.checked)}
-              className="h-4 w-4 rounded border-[#c5cdd8] accent-[#4A86F7]"
+              onCheckedChange={(checked) => setRememberEmail(Boolean(checked))}
             />
             Remember email
           </label>
-          <Link to="/forgot-password" className="text-[13px] font-medium text-[#4A86F7] hover:underline">
+          <Link to="/forgot-password" className="text-[13px] font-medium text-primary hover:underline">
             Forgot password?
           </Link>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#4A86F7] text-[15px] font-semibold text-white shadow-[0_8px_18px_rgba(74,134,247,0.35)] transition hover:bg-[#3b78ea] disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Login'}
-        </button>
+        <Button type="submit" disabled={loading} size="lg" className="mt-1 h-11 w-full">
+          {loading ? <Loader2 className="animate-spin" /> : 'Login'}
+        </Button>
       </form>
 
-      <p className="mt-5 text-center text-[11px] text-[#9aa3b5]">© 2026 Petrolenz. All rights reserved.</p>
+      <p className="mt-5 text-center text-[11px] text-muted-foreground">© 2026 Petrolenz. All rights reserved.</p>
     </div>
   );
 }
