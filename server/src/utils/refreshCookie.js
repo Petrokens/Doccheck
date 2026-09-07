@@ -5,7 +5,7 @@ function isProduction() {
 function resolveSameSite() {
   const override = String(process.env.REFRESH_COOKIE_SAME_SITE || '').trim().toLowerCase();
   if (['strict', 'lax', 'none'].includes(override)) return override;
-  return isProduction() ? 'none' : 'lax';
+  return 'lax';
 }
 
 function refreshCookieOptions({ maxAge } = {}) {
@@ -15,7 +15,7 @@ function refreshCookieOptions({ maxAge } = {}) {
     httpOnly: true,
     secure,
     sameSite,
-    path: '/',
+    path: '/api/auth',
     ...(maxAge != null ? { maxAge } : {}),
   };
 }

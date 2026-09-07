@@ -1,34 +1,37 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const path = require('path');
 
 const authRoutes = require('./routes/authRoutes');
 const qaqcRoutes = require('./routes/qaqcRoutes');
 const sidebarRoutes = require('./routes/sidebarRoutes');
 const { users, roles, permissions } = require('./routes/adminRoutes');
+const securityHeaders = require('./middleware/securityHeaders');
+const { globalLimiter } = require('./middleware/rateLimits');
+const { isAllowedOrigin } = require('./security/validateEnv');
+const { publicError } = require('./security/httpErrors');
 
 const app = express();
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
-const allowedOrigins = (process.env.FRONTEND_URL || '')
-  .split(',')
-  .map((s) => s.trim().replace(/\/$/, ''))
-  .filter(Boolean);
-
+app.use(securityHeaders());
+app.use(globalLimiter);
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      const normalized = origin.replace(/\/$/, '');
-      if (!allowedOrigins.length || allowedOrigins.includes(normalized)) return callback(null, origin);
-      if (/^https?:\/\/localhost(:\d+)?$/.test(normalized)) return callback(null, origin);
+      if (isAllowedOrigin(origin)) return callback(null, origin);
       return callback(null, false);
     },
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    maxAge: 600,
   }),
 );
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: false, limit: '200kb' }));
 app.use(cookieParser());
 
 app.get('/api/health', (_req, res) => {
@@ -42,13 +45,15 @@ app.use('/api/users', users);
 app.use('/api/roles', roles);
 app.use('/api/permissions', permissions);
 
-app.use('/reports', express.static(path.join(__dirname, 'reports')));
+app.use((req, res) => publicError(res, 404, 'Not found'));
 
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-    return res.status(400).json({ error: 'Invalid JSON in request body' });
+    return publicError(res, 400, 'Invalid JSON in request body');
   }
-  return next(err);
+  console.error('Unhandled error:', err?.message || err);
+  if (res.headersSent) return next(err);
+  return publicError(res, 500, 'Internal server error');
 });
 
 module.exports = app;

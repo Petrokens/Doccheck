@@ -1,17 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const rateLimit = require('express-rate-limit');
 const auth = require('../controllers/authController');
 const verifyToken = require('../middleware/verifyToken');
 const requireRole = require('../middleware/requireRole');
+const requireTrustedOrigin = require('../middleware/requireTrustedOrigin');
+const { loginLimiter, passwordLimiter, refreshLimiter } = require('../middleware/rateLimits');
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Too many login attempts. Please try again after 15 minutes.',
-});
+router.use(requireTrustedOrigin);
 
 if (process.env.AUTH_ALLOW_PUBLIC_REGISTER === 'true') {
   router.post('/register', auth.register);
@@ -21,9 +16,9 @@ if (process.env.AUTH_ALLOW_PUBLIC_REGISTER === 'true') {
 
 router.post('/login', loginLimiter, auth.login);
 router.post('/logout', auth.logout);
-router.post('/refresh', auth.refresh);
-router.post('/forgot-password', auth.forgotPassword);
-router.post('/reset-password', auth.resetPassword);
+router.post('/refresh', refreshLimiter, auth.refresh);
+router.post('/forgot-password', passwordLimiter, auth.forgotPassword);
+router.post('/reset-password', passwordLimiter, auth.resetPassword);
 router.get('/me', verifyToken, auth.me);
 
 module.exports = router;

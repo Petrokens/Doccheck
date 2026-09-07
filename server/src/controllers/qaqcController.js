@@ -5,6 +5,9 @@ const { streamProcessReportPdf } = require('../services/processReportPdfService'
 const processReportRepo = require('../db/repositories/processReportRepository');
 const userRepo = require('../db/repositories/userRepository');
 const { mapWithConcurrency } = require('../utils/asyncPool');
+const { sanitizeMarkdown, isReportId, canAccessReport } = require('../security/reportAccess');
+const { publicError, internalError } = require('../security/httpErrors');
+const { audit } = require('../security/audit');
 
 const EXTRACTION_CONCURRENCY = Number(process.env.EXTRACTION_CONCURRENCY || 4);
 const memoryCache = new Map();
@@ -147,7 +150,7 @@ async function buildProcessReport({
     '',
     '---',
     '',
-    `${String(aiMarkdown || '').trim()}\n\n${footerBlock(generatedAtIso)}`,
+    `${sanitizeMarkdown(String(aiMarkdown || '').trim())}\n\n${footerBlock(generatedAtIso)}`,
     '',
   ].join('\n');
 
@@ -167,6 +170,7 @@ async function buildProcessReport({
   };
   memoryCache.set(id, record);
   await processReportRepo.create(record);
+  audit('report.generate', { id, user_id: checkedByUserId, document_type: record.document_type });
   emit(`Report persisted successfully. Report ID: ${id}`);
   return record;
 }
@@ -199,7 +203,7 @@ exports.generateProcessReport = async (req, res) => {
     const supportFiles = req.files?.supportDocument || [];
     if (!mainFiles.length) return res.status(400).json({ error: 'Main project document is required.' });
     const record = await buildProcessReport({
-      documentType: String(req.body?.documentType || '').trim(),
+      documentType: String(req.body?.documentType || '').trim().slice(0, 255),
       reportCategoryOverride: String(req.body?.reportCategory || '').trim(),
       mainFiles,
       supportFiles,
@@ -207,7 +211,7 @@ exports.generateProcessReport = async (req, res) => {
     });
     return res.status(200).json({ report: record });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to generate QA/QC report.', details: error.message });
+    return internalError(res, error, 'Failed to generate QA/QC report.');
   }
 };
 
@@ -230,7 +234,7 @@ exports.generateProcessReportStream = async (req, res) => {
       sendEvent('done', { ok: false });
       return res.end();
     }
-    const documentType = String(req.body?.documentType || '').trim();
+    const documentType = String(req.body?.documentType || '').trim().slice(0, 255);
     sendEvent('log', { line: 'Initializing generation request...' });
     sendEvent('log', { line: `Document type: ${documentType || 'Engineering Document'}` });
     sendEvent('log', { line: `Project document(s) (${mainFiles.length}): ${mainFiles.map((m) => m.originalname).join(', ')}` });
@@ -273,8 +277,9 @@ exports.generateProcessReportStream = async (req, res) => {
 
 exports.getProcessReportById = async (req, res) => {
   const id = String(req.params?.id || '');
-  let record = memoryCache.get(id) || (await processReportRepo.findById(id));
-  if (!record) return res.status(404).json({ error: 'Report not found' });
+  if (!isReportId(id)) return publicError(res, 400, 'Invalid report id');
+  const record = memoryCache.get(id) || (await processReportRepo.findById(id));
+  if (!record || !canAccessReport(req, record)) return publicError(res, 404, 'Report not found');
   return res.json({ report: record });
 };
 
@@ -283,7 +288,7 @@ exports.getReportDashboardStats = async (req, res) => {
     const qaqcTotal = await processReportRepo.countWithFilter(ownerFilterForRequest(req));
     return res.json({ qaqcTotal });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch report counts.', details: error.message });
+    return internalError(res, error, 'Failed to fetch report counts.');
   }
 };
 
@@ -304,45 +309,50 @@ exports.getProcessReportHistory = async (req, res) => {
       pagination: { page: safePage, limit, total, totalPages },
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch report history.', details: error.message });
+    return internalError(res, error, 'Failed to fetch report history.');
   }
 };
 
 exports.updateProcessReport = async (req, res) => {
   try {
-    const updated = await processReportRepo.update(req.params.id, {
-      report_title: req.body?.report_title,
-      report_markdown: req.body?.report_markdown,
+    const id = String(req.params.id || '');
+    if (!isReportId(id)) return publicError(res, 400, 'Invalid report id');
+    const existing = memoryCache.get(id) || (await processReportRepo.findById(id));
+    if (!existing || !canAccessReport(req, existing)) return publicError(res, 404, 'Report not found');
+    const updated = await processReportRepo.update(id, {
+      report_title: String(req.body?.report_title || existing.report_title || '').slice(0, 500),
+      report_markdown: sanitizeMarkdown(req.body?.report_markdown ?? existing.report_markdown),
       report_structured: req.body?.report_structured,
     });
-    if (!updated) return res.status(404).json({ error: 'Report not found' });
+    if (!updated) return publicError(res, 404, 'Report not found');
     memoryCache.set(updated.id, updated);
+    audit('report.update', { id, user_id: req.user?.user_id });
     return res.json({ report: updated });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to update report.', details: error.message });
+    return internalError(res, error, 'Failed to update report.');
   }
 };
 
 exports.deleteProcessReport = async (req, res) => {
   const id = String(req.params?.id || '');
+  if (!isReportId(id)) return publicError(res, 400, 'Invalid report id');
   try {
     const record = await processReportRepo.findById(id);
-    if (!record) return res.status(404).json({ error: 'Report not found' });
-    const isPrivileged = Number(req.user?.role_id) === 1;
-    if (!isPrivileged && String(record.checked_by_user_id) !== String(req.user?.user_id)) {
-      return res.status(403).json({ error: 'Not allowed to delete this report' });
-    }
+    if (!record || !canAccessReport(req, record)) return publicError(res, 404, 'Report not found');
     await processReportRepo.deleteById(id);
     memoryCache.delete(id);
+    audit('report.delete', { id, user_id: req.user?.user_id });
     return res.json({ message: 'Report deleted', id });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to delete report.', details: error.message });
+    return internalError(res, error, 'Failed to delete report.');
   }
 };
 
 exports.downloadProcessReport = async (req, res) => {
   const id = String(req.params?.id || '');
+  if (!isReportId(id)) return publicError(res, 400, 'Invalid report id');
   const record = memoryCache.get(id) || (await processReportRepo.findById(id));
-  if (!record) return res.status(404).json({ error: 'Report not found' });
+  if (!record || !canAccessReport(req, record)) return publicError(res, 404, 'Report not found');
+  audit('report.download', { id, user_id: req.user?.user_id });
   streamProcessReportPdf(res, record);
 };

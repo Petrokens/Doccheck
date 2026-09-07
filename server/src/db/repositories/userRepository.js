@@ -15,6 +15,8 @@ function mapUser(row) {
     last_login_at: row.last_login_at,
     reset_token: row.reset_token,
     reset_token_expires: row.reset_token_expires,
+    failed_login_count: row.failed_login_count,
+    locked_until: row.locked_until,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -49,10 +51,10 @@ async function findByUserIds(ids) {
   return rows;
 }
 
-async function findByRefreshToken(token) {
+async function findByRefreshToken(tokenHash) {
   const { rows } = await pool.query(
     `SELECT * FROM users WHERE refresh_token = $1 AND refresh_token_expires > NOW() LIMIT 1`,
-    [token],
+    [tokenHash],
   );
   return mapUser(rows[0]);
 }
@@ -65,12 +67,25 @@ async function findByResetToken(token) {
   return mapUser(rows[0]);
 }
 
-async function clearRefreshToken(token) {
+async function clearRefreshToken(tokenHash) {
   await pool.query(
     `UPDATE users SET refresh_token = NULL, refresh_token_expires = NULL, updated_at = NOW()
      WHERE refresh_token = $1`,
-    [token],
+    [tokenHash],
   );
+}
+
+async function clearRefreshTokenByUserId(userId) {
+  await pool.query(
+    `UPDATE users SET refresh_token = NULL, refresh_token_expires = NULL, updated_at = NOW()
+     WHERE user_id = $1::uuid`,
+    [userId],
+  );
+}
+
+async function countByRole(roleId) {
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1', [roleId]);
+  return rows[0]?.n || 0;
 }
 
 async function findAllSorted() {
@@ -92,6 +107,8 @@ async function updateByUserId(userId, fields) {
     'last_login_at',
     'reset_token',
     'reset_token_expires',
+    'failed_login_count',
+    'locked_until',
   ];
   const sets = [];
   const values = [];
@@ -123,6 +140,8 @@ module.exports = {
   findByRefreshToken,
   findByResetToken,
   clearRefreshToken,
+  clearRefreshTokenByUserId,
+  countByRole,
   findAllSorted,
   updateByUserId,
   deleteByUserId,

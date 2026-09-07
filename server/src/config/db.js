@@ -5,7 +5,8 @@ function resolveDatabaseUrl() {
 }
 
 function resolveSsl(connectionString) {
-  if (process.env.PG_SSL === 'true') return { rejectUnauthorized: false };
+  const insecure = process.env.PG_SSL_INSECURE === 'true';
+  if (process.env.PG_SSL === 'true') return { rejectUnauthorized: !insecure };
   if (process.env.PG_SSL === 'false') return undefined;
   try {
     const host = new URL(connectionString).hostname.toLowerCase();
@@ -15,7 +16,7 @@ function resolveSsl(connectionString) {
       host.includes('neon.tech') ||
       process.env.NODE_ENV === 'production'
     ) {
-      return { rejectUnauthorized: false };
+      return { rejectUnauthorized: !insecure };
     }
   } catch {
     /* ignore */

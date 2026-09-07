@@ -10,14 +10,21 @@ async function ensureMasterUser() {
   }
 
   const email = String(process.env.MASTER_EMAIL || 'admin@petrolenz.local').trim().toLowerCase();
-  const password = String(process.env.MASTER_PASSWORD || 'ChangeMe123!');
+  const password = String(process.env.MASTER_PASSWORD || '');
   const username = String(process.env.MASTER_USERNAME || 'Master User');
+  if (!password) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('MASTER_PASSWORD is required.');
+    }
+    console.warn('[security] MASTER_PASSWORD is empty; master user will not be created or synced.');
+    return null;
+  }
 
   const existing = await userRepo.findByEmail(email);
   if (existing) {
     const matches = await bcrypt.compare(password, existing.password);
     if (!matches && process.env.NODE_ENV !== 'production') {
-      const hashed = await bcrypt.hash(password, 10);
+      const hashed = await bcrypt.hash(password, 12);
       await userRepo.updateByUserId(existing.user_id, { password: hashed });
       console.log(`Master user password synced from MASTER_PASSWORD: ${email}`);
     } else {
@@ -26,7 +33,7 @@ async function ensureMasterUser() {
     return existing;
   }
 
-  const hashed = await bcrypt.hash(password, 10);
+  const hashed = await bcrypt.hash(password, 12);
   const user = await userRepo.create({
     username,
     email,

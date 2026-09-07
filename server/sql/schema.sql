@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at         TIMESTAMPTZ,
   reset_token           TEXT,
   reset_token_expires   TIMESTAMPTZ,
+  failed_login_count    INTEGER NOT NULL DEFAULT 0,
+  locked_until          TIMESTAMPTZ,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

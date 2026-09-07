@@ -1,6 +1,8 @@
 const userRepo = require('../db/repositories/userRepository');
 const roleRepo = require('../db/repositories/roleRepository');
 const permissionRepo = require('../db/repositories/permissionRepository');
+const { publicError, internalError } = require('../security/httpErrors');
+const { audit } = require('../security/audit');
 
 exports.listUsers = async (_req, res) => {
   try {
@@ -17,16 +19,28 @@ exports.listUsers = async (_req, res) => {
       })),
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to list users', details: error.message });
+    return internalError(res, error, 'Failed to list users');
   }
 };
 
 exports.deleteUser = async (req, res) => {
   try {
-    await userRepo.deleteByUserId(req.params.userId);
+    const targetId = String(req.params.userId || '');
+    if (!targetId) return publicError(res, 400, 'User id required');
+    if (targetId === String(req.user?.user_id)) {
+      return publicError(res, 400, 'You cannot delete your own account.');
+    }
+    const target = await userRepo.findByUserId(targetId);
+    if (!target) return publicError(res, 404, 'User not found');
+    if (Number(target.role_id) === 1) {
+      const masters = await userRepo.countByRole(1);
+      if (masters <= 1) return publicError(res, 400, 'Cannot delete the last Master user.');
+    }
+    await userRepo.deleteByUserId(targetId);
+    audit('admin.user_delete', { actor: req.user?.user_id, target: targetId });
     return res.json({ message: 'User deleted' });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to delete user', details: error.message });
+    return internalError(res, error, 'Failed to delete user');
   }
 };
 
@@ -35,28 +49,33 @@ exports.listRoles = async (_req, res) => {
     const roles = await roleRepo.findAll();
     return res.json({ roles });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to list roles', details: error.message });
+    return internalError(res, error, 'Failed to list roles');
   }
 };
 
 exports.createRole = async (req, res) => {
   try {
+    const name = String(req.body?.name || '').trim().slice(0, 64);
+    if (!name) return publicError(res, 400, 'Role name is required');
     const roles = await roleRepo.findAll();
     const nextId = Math.max(0, ...roles.map((r) => r.id)) + 1;
-    const role = await roleRepo.create({ id: nextId, name: String(req.body?.name || '').trim() });
+    const role = await roleRepo.create({ id: nextId, name });
+    audit('admin.role_create', { actor: req.user?.user_id, role_id: role.id });
     return res.status(201).json({ role });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to create role', details: error.message });
+    return internalError(res, error, 'Failed to create role');
   }
 };
 
 exports.updateRole = async (req, res) => {
   try {
-    const role = await roleRepo.update(req.params.id, { name: String(req.body?.name || '').trim() });
-    if (!role) return res.status(404).json({ error: 'Role not found' });
+    const name = String(req.body?.name || '').trim().slice(0, 64);
+    if (!name) return publicError(res, 400, 'Role name is required');
+    const role = await roleRepo.update(req.params.id, { name });
+    if (!role) return publicError(res, 404, 'Role not found');
     return res.json({ role });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to update role', details: error.message });
+    return internalError(res, error, 'Failed to update role');
   }
 };
 
@@ -65,7 +84,7 @@ exports.listPermissions = async (_req, res) => {
     const permissions = await permissionRepo.findAll();
     return res.json({ permissions });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to list permissions', details: error.message });
+    return internalError(res, error, 'Failed to list permissions');
   }
 };
 
@@ -74,15 +93,19 @@ exports.getRolePermissions = async (req, res) => {
     const ids = await permissionRepo.findRolePermissionIds(req.params.id);
     return res.json({ permission_ids: ids });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to load role permissions', details: error.message });
+    return internalError(res, error, 'Failed to load role permissions');
   }
 };
 
 exports.setRolePermissions = async (req, res) => {
   try {
-    await permissionRepo.setRolePermissions(req.params.id, req.body?.permission_ids || []);
+    const ids = Array.isArray(req.body?.permission_ids)
+      ? req.body.permission_ids.map(Number).filter((n) => Number.isInteger(n) && n > 0)
+      : [];
+    await permissionRepo.setRolePermissions(req.params.id, ids);
+    audit('admin.permissions_set', { actor: req.user?.user_id, role_id: req.params.id });
     return res.json({ message: 'Permissions updated' });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to update permissions', details: error.message });
+    return internalError(res, error, 'Failed to update permissions');
   }
 };
