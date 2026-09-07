@@ -1,72 +1,87 @@
-// src/routes/AppRoutes.jsx
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-
-// Layout
-import DashboardLayout from '@/components/layout/DashboardLayout';
-
-// Public Pages
-import LoginPage from '../feature/auth/pages/Login';
-import ForgotPasswordPage from '../feature/auth/pages/ForgotPassword';
-import CreateUserPage from '../feature/admin/pages/CreateUser';
-
-// Dashboard Pages
-import Process from '@/pages/dashboard/Process';
-import ChecklistDetail from '@/pages/dashboard/progress/ChecklistDetail'
-import Piping from '@/pages/dashboard/Piping';
-import Civil from '@/pages/dashboard/CivilStructural';
-import Mechanical from '@/pages/dashboard/Mechanical';
-import Electrical from '@/pages/dashboard/Electrical';
-import Instrumentation from '@/pages/dashboard/Instrumentation';
-import HSE from '@/pages/dashboard/HSE';
-import General from '@/pages/dashboard/GeneralDeliverables';
-import DepartmentChecklist from '@/pages/dashboard/DepartmentChecklist';
-import Projects from '@/pages/dashboard/Projects';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { SessionAuthProvider } from '@/context/SessionAuthContext';
+import { ProtectedRoute, PublicAuthRoute } from '@/components/auth/ProtectedRoute';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
+import LoginPage from '@/pages/auth/Login';
+import ForgotPasswordPage from '@/pages/auth/ForgotPassword';
+import DisciplineWorkspace from '@/pages/dashboard/DisciplineWorkspace';
 import History from '@/pages/dashboard/History';
+import AIReview from '@/pages/dashboard/AIReview';
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/dashboard/Settings';
-import ForgotPasswordDash from '@/pages/dashboard/ForgotPassword';
-import CreateUserDash from '@/pages/dashboard/CreateUser';
+import Info from '@/pages/dashboard/Info';
+import SystemStatus from '@/pages/dashboard/SystemStatus';
+import PlaceholderPage from '@/pages/dashboard/PlaceholderPage';
+import {
+  AccessControl,
+  AuditLog,
+  EnvSettings,
+  RoleManagement,
+  UserManagement,
+} from '@/pages/dashboard/adminPages';
+
+function AppRoutesInner() {
+  return (
+    <Routes>
+      <Route path="/login" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
+      <Route path="/forgot-password" element={<PublicAuthRoute><ForgotPasswordPage /></PublicAuthRoute>} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="qa-qc/process" replace />} />
+        <Route path="qa-qc">
+          <Route index element={<Navigate to="process" replace />} />
+          <Route path="process" element={<DisciplineWorkspace department="process" />} />
+          <Route path="piping" element={<DisciplineWorkspace department="piping" />} />
+          <Route path="pipeline" element={<DisciplineWorkspace department="pipeline" />} />
+          <Route path="civil" element={<DisciplineWorkspace department="civil" />} />
+          <Route path="civil-structural" element={<DisciplineWorkspace department="civil" />} />
+          <Route path="mechanical" element={<DisciplineWorkspace department="mechanical" />} />
+          <Route path="mechanical-rotating" element={<DisciplineWorkspace department="mechanical-rotating" />} />
+          <Route path="mechanical-static" element={<DisciplineWorkspace department="mechanical-static" />} />
+          <Route path="electrical" element={<DisciplineWorkspace department="electrical" />} />
+          <Route path="hvac" element={<DisciplineWorkspace department="hvac" />} />
+          <Route path="instrumentation" element={<DisciplineWorkspace department="instrumentation" />} />
+          <Route path="telecom" element={<DisciplineWorkspace department="telecom" />} />
+          <Route path="hse" element={<DisciplineWorkspace department="hse" />} />
+          <Route path="general" element={<DisciplineWorkspace department="general" />} />
+          <Route path="general-discipline" element={<DisciplineWorkspace department="general" />} />
+          <Route path="history" element={<History />} />
+          <Route path="ai-review" element={<AIReview />} />
+          <Route path="templates" element={<AIReview />} />
+          <Route path="score-trends" element={<History title="Score Trends" />} />
+          <Route path="doc-statistics" element={<History title="Document Stats" />} />
+          <Route path="user-activity" element={<AuditLog />} />
+        </Route>
+        <Route path="profile" element={<Profile />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="info" element={<Info />} />
+        <Route path="system-status" element={<SystemStatus />} />
+        <Route path="env-settings" element={<EnvSettings />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="roles" element={<RoleManagement />} />
+        <Route path="permissions" element={<AccessControl />} />
+        <Route path="audit-log" element={<AuditLog />} />
+        <Route path="audit-reports" element={<PlaceholderPage title="Audit Reports" body="Use History and Audit Log for QA/QC traceability." />} />
+        <Route path="system-logs" element={<PlaceholderPage title="System Logs" body="Runtime logs are written to the API console." />} />
+      </Route>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+}
 
 export default function AppRoutes() {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/register" element={<CreateUserPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/admin/create-user" element={<CreateUserPage />} />
-
-        {/* 🚪 Public Dashboard Routes (NO auth check) */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<Navigate to="process" replace />} />
-          {/* Disciplines */}
-          <Route path="process" element={<Process />} />
-          <Route path="piping" element={<Piping />} />
-          <Route path="pipeline" element={<DepartmentChecklist title="Pipeline" basePath="pipeline" />} />
-          <Route path="civil" element={<Civil />} />
-          <Route path="civil-structural" element={<Civil />} />
-          <Route path="mechanical" element={<Mechanical />} />
-          <Route path="mechanical-rotating" element={<DepartmentChecklist title="Mechanical - Rotating" basePath="mechanical-rotating" />} />
-          <Route path="mechanical-static" element={<DepartmentChecklist title="Mechanical - Static" basePath="mechanical-static" />} />
-          <Route path="electrical" element={<Electrical />} />
-          <Route path="hvac" element={<DepartmentChecklist title="HVAC" basePath="hvac" />} />
-          <Route path="instrumentation" element={<Instrumentation />} />
-          <Route path="telecom" element={<DepartmentChecklist title="Telecom" basePath="telecom" />} />
-          <Route path="hse" element={<HSE />} />
-          <Route path="general" element={<General />} />
-          <Route path="general-deliverables" element={<General />} />
-          <Route path=":department/:id" element={<ChecklistDetail />} />
-          <Route path="projects" element={<Projects />} />
-
-          {/* Others */}
-          <Route path="history" element={<History />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="forgot-password" element={<ForgotPasswordDash />} />
-          <Route path="create-user" element={<CreateUserDash />} />
-        </Route>
-      </Routes>
-    </Router>
+    <BrowserRouter>
+      <SessionAuthProvider>
+        <AppRoutesInner />
+      </SessionAuthProvider>
+    </BrowserRouter>
   );
 }

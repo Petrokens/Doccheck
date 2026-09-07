@@ -1,8 +1,9 @@
-// requireRole.js
-module.exports = function (allowedRoleIds = []) {
-  return function (req, res, next) {
-    if (!req.user || !allowedRoleIds.includes(req.user.role_id)) {
-      return res.status(403).json({ error: 'Access denied: insufficient role_id' });
+module.exports = function requireRole(allowedIds) {
+  const ids = Array.isArray(allowedIds) ? allowedIds.map(Number) : [Number(allowedIds)];
+  return (req, res, next) => {
+    const roleId = Number(req.user?.role_id);
+    if (!ids.includes(roleId)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
     }
     next();
   };

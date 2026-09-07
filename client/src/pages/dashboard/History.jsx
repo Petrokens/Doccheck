@@ -1,106 +1,98 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import ConfirmDialog from '@/components/Common/ConfirmDialog';
+import { deleteProcessReport, fetchProcessHistory } from '@/services/processReportService';
+import { Link } from 'react-router-dom';
+import { QA_QC_BASE } from '@/lib/dashboardPaths';
 
-const dummyHistory = [
-  {
-    file: 'PROCESS OVERALL CHECKLIST',
-    discipline: 'Process',
-    score: 92,
-    date: '2025-07-10',
-    time: '14:32',
-  },
-  {
-    file: 'CABLE TRAY LAYOUT CHECKLIST',
-    discipline: 'Instrumentation',
-    score: 85,
-    date: '2025-07-09',
-    time: '18:10',
-  },
-  {
-    file: 'STRUCTURAL CHECKLIST PDS',
-    discipline: 'Civil & Structural',
-    score: 78,
-    date: '2025-07-08',
-    time: '11:45',
-  },
-  {
-    file: 'CONTROL SYSTEM PHILOSOPHY',
-    discipline: 'Instrumentation',
-    score: 88,
-    date: '2025-07-08',
-    time: '09:55',
-  },
-  {
-    file: 'ELECTRICAL CABLE SCHEDULE',
-    discipline: 'Electrical',
-    score: 95,
-    date: '2025-07-07',
-    time: '16:22',
-  },
-];
-
-export default function History() {
+export default function History({ title = 'QC History' }) {
   const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState([]);
+  const [error, setError] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 1000);
+    fetchProcessHistory({ page: 1, limit: 500 })
+      .then((data) => setHistory(data.history || []))
+      .catch((err) => setError(err?.response?.data?.error || err.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  const renderCard = (entry, index) => (
-    <div
-      key={index}
-      className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border dark:border-gray-700 hover:shadow-md transition"
-    >
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
-        {loading ? (
-          <>
-            <div className="space-y-2 w-full">
-              <div className="h-4 w-2/3 bg-gray-300 dark:bg-gray-700 rounded animate-pulse" />
-              <div className="h-3 w-1/3 bg-gray-200 dark:bg-gray-600 rounded animate-pulse" />
-            </div>
-            <div className="flex flex-col space-y-1 md:items-end">
-              <div className="h-3 w-32 bg-gray-200 dark:bg-gray-600 rounded animate-pulse" />
-              <div className="h-4 w-24 bg-gray-300 dark:bg-gray-700 rounded animate-pulse" />
-            </div>
-          </>
-        ) : (
-          <>
-            <div>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">{entry.file}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Discipline: <span className="font-medium">{entry.discipline}</span>
-              </p>
-            </div>
-            <div className="flex flex-col md:items-end">
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Date: {entry.date} — {entry.time}
-              </span>
-              <span
-                className={`text-sm font-bold ${
-                  entry.score >= 90
-                    ? 'text-green-500'
-                    : entry.score >= 75
-                    ? 'text-yellow-500'
-                    : 'text-red-500'
-                }`}
-              >
-                Score: {entry.score}%
-              </span>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  const selectableIds = history.map((e) => e.id).filter(Boolean);
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.includes(id));
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await Promise.all(selectedIds.map((id) => deleteProcessReport(id)));
+      setHistory((prev) => prev.filter((e) => !selectedIds.includes(e.id)));
+      setSelectedIds([]);
+      setConfirmOpen(false);
+      toast.success('Reports deleted.');
+    } catch (err) {
+      toast.error(err?.response?.data?.error || err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold text-blue-800 dark:text-blue-400 mb-6">QC History</h1>
-
-      <div className="space-y-4">
-        {(loading ? dummyHistory : dummyHistory).map((entry, index) =>
-          renderCard(entry, index)
-        )}
+      <h1 className="mb-6 text-2xl font-bold text-blue-800 dark:text-blue-400">{title}</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-gray-600 dark:text-gray-400">Select reports to delete</p>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setSelectedIds(allSelected ? [] : selectableIds)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white">
+            {allSelected ? 'Clear selection' : `Select all (${selectableIds.length})`}
+          </button>
+          <button type="button" disabled={!selectedIds.length} onClick={() => setConfirmOpen(true)} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+            Delete selected ({selectedIds.length})
+          </button>
+        </div>
       </div>
+      {error ? <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {loading
+          ? Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-40 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />)
+          : history.length
+            ? history.map((entry) => (
+              <Link
+                key={entry.id}
+                to={`${QA_QC_BASE}/ai-review?id=${entry.id}`}
+                className={`flex flex-col rounded-lg border bg-white p-4 shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800 ${selectedIds.includes(entry.id) ? 'ring-2 ring-blue-500' : ''}`}
+              >
+                <div className="flex justify-between">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(entry.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => setSelectedIds((prev) => (prev.includes(entry.id) ? prev.filter((x) => x !== entry.id) : [...prev, entry.id]))}
+                  />
+                  <span className="text-xs text-gray-500">{entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</span>
+                </div>
+                <p className="mt-3 line-clamp-2 font-semibold">{entry.file_name}</p>
+                <p className="mt-2 text-sm text-gray-500">Department: {entry.document_type}</p>
+                <p className="text-sm text-gray-500">Checked by: {entry.checked_by}</p>
+                {entry.score != null ? (
+                  <p className={`mt-auto pt-3 text-lg font-bold ${entry.score >= 90 ? 'text-green-500' : entry.score >= 75 ? 'text-yellow-500' : 'text-red-500'}`}>
+                    {entry.score}%
+                  </p>
+                ) : null}
+              </Link>
+            ))
+            : <div className="col-span-full rounded-lg border bg-white p-6 text-sm dark:border-gray-700 dark:bg-gray-800">No report history found yet.</div>}
+      </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete reports?"
+        message={`Delete ${selectedIds.length} report(s)? This cannot be undone.`}
+        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onClose={() => !deleting && setConfirmOpen(false)}
+      />
     </div>
   );
 }

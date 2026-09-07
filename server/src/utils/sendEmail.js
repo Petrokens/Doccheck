@@ -1,20 +1,18 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+async function sendEmail({ to, subject, html, text }) {
+  const user = String(process.env.EMAIL_USER || '').trim();
+  const pass = String(process.env.EMAIL_PASS || '').trim();
+  if (!user || !pass) {
+    console.warn('Email skipped: EMAIL_USER / EMAIL_PASS not set');
+    return { skipped: true };
   }
-});
-
-const sendEmail = async (to, subject, html) => {
-  await transporter.sendMail({
-    from: `"PetroLens" <${process.env.EMAIL_USER}>`,
-    to,
-    subject,
-    html
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
   });
-};
+  await transporter.sendMail({ from: user, to, subject, html, text });
+  return { skipped: false };
+}
 
-module.exports = sendEmail;
+module.exports = { sendEmail };

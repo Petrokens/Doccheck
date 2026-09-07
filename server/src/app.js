@@ -1,43 +1,54 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-require('dotenv').config();
+const path = require('path');
 
-//All Routes import statements
-const documentRoutes = require('./routes/documentRoutes');
-const authRoutes  = require('./routes/authRoutes');
-const roleRoutes = require('./routes/roleRoutes');
-const checklistRoutes = require('./routes/checklistRoutes');
-
-
-//Sidebar routes import
-const sidebarRoutes = require('./routes/content/sidebarRoutes');
-
+const authRoutes = require('./routes/authRoutes');
+const qaqcRoutes = require('./routes/qaqcRoutes');
+const sidebarRoutes = require('./routes/sidebarRoutes');
+const { users, roles, permissions } = require('./routes/adminRoutes');
 
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
-app.use(express.json());
+app.set('trust proxy', 1);
+
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((s) => s.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const normalized = origin.replace(/\/$/, '');
+      if (!allowedOrigins.length || allowedOrigins.includes(normalized)) return callback(null, origin);
+      if (/^https?:\/\/localhost(:\d+)?$/.test(normalized)) return callback(null, origin);
+      return callback(null, false);
+    },
+    credentials: true,
+  }),
+);
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
-app.use('/api/auth',authRoutes );
-app.use('/api/documents', documentRoutes);
-app.use('/api/roles', roleRoutes);
-app.use('/api/checklists', checklistRoutes);
-const checklistItemRoutes = require('./routes/checklistItemRoutes');
-app.use('/api/checklist-items', checklistItemRoutes);
-
-const disciplineRoutes = require('./routes/disciplineRoutes');
-app.use('/api/disciplines', disciplineRoutes);
-
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, product: 'Petrolenz QA/QC' });
+});
+app.use('/api/auth', authRoutes);
+app.use('/api/qaqc', qaqcRoutes);
+app.use('/api/qc', qaqcRoutes);
 app.use('/api/sidebar', sidebarRoutes);
+app.use('/api/users', users);
+app.use('/api/roles', roles);
+app.use('/api/permissions', permissions);
 
-const qcRoutes = require('./routes/qcRoutes');
-app.use('/api/qc', qcRoutes);
-
-const userRoutes = require('./routes/userRoutes');
-app.use('/api/users', userRoutes);
-
-const path = require('path');
 app.use('/reports', express.static(path.join(__dirname, 'reports')));
+
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+  return next(err);
+});
 
 module.exports = app;

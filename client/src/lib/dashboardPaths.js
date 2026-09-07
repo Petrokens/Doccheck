@@ -1,0 +1,14 @@
+export const DASHBOARD_HUB = '/dashboard';
+export const QA_QC_BASE = `${DASHBOARD_HUB}/qa-qc`;
+export const QA_QC_PROCESS = `${QA_QC_BASE}/process`;
+export const MAIN_PROFILE = `${DASHBOARD_HUB}/profile`;
+export const MAIN_SETTINGS = `${DASHBOARD_HUB}/settings`;
+export const MAIN_INFO = `${DASHBOARD_HUB}/info`;
+export const MAIN_AUDIT_LOG = `${DASHBOARD_HUB}/audit-log`;
+export const MAIN_USERS = `${DASHBOARD_HUB}/users`;
+export const MAIN_ROLES = `${DASHBOARD_HUB}/roles`;
+export const MAIN_PERMISSIONS = `${DASHBOARD_HUB}/permissions`;
+export const MAIN_SYSTEM_STATUS = `${DASHBOARD_HUB}/system-status`;
+export const MAIN_ENV_SETTINGS = `${DASHBOARD_HUB}/env-settings`;
+export const MAIN_AUDIT_REPORTS = `${DASHBOARD_HUB}/audit-reports`;
+export const MAIN_SYSTEM_LOGS = `${DASHBOARD_HUB}/system-logs`;

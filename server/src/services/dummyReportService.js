@@ -1,0 +1,57 @@
+function generateDummyQaQcReport({ documentType, mainDocumentName, supportDocumentName, mainText }) {
+  const excerpt = String(mainText || '').slice(0, 400).replace(/\s+/g, ' ').trim() || 'No extracted text.';
+  return `
+## SECTION 1: REPORT HEADER
+**Document Title:** ${documentType || 'Engineering Document'}
+**Main document:** ${mainDocumentName || 'N/A'}
+**Support document:** ${supportDocumentName || 'Not provided'}
+**Tool:** Petrolens QA/QC Report Engine
+**Mode:** Demo fallback (configure OPENAI_API_KEY for live analysis)
+
+## SECTION 2: EXECUTIVE SUMMARY DASHBOARD
+| Metric | Value |
+| --- | --- |
+| QA Score | 78.0 |
+| Technical Score | 74.0 |
+| Rule Score | 80.0 |
+| Interface Score | 76.0 |
+| Final QC Score | 77 |
+
+## SECTION 4: CHECK-1 QA/QC FIXED CHECKS
+| Check ID | Description | Status | Score | Remarks |
+| --- | --- | --- | --- | --- |
+| C1-01 | Title block / revision present | Partial | 7.5 | Confirm revision history is complete |
+| C1-02 | Scope and references listed | OK | 10 | Scope identified from extracted text |
+| C1-03 | Approval trail | Not OK | 0 | Sign-off table not confirmed |
+
+## SECTION 5: CHECK-2 TECHNICAL DEEP REVIEW
+| Question ID | Tag | Question | Status | Score | Remarks |
+| --- | --- | --- | --- | --- | --- |
+| Q-01 | [DATA] | Are design conditions stated? | Partial | 7.5 | Partial evidence in extract |
+| Q-02 | [SAFE] | Relief / safeguarding mentioned? | Partial | 7.5 | Needs engineer confirmation |
+
+## SECTION 6: RULE ENGINE EXECUTION
+Applicable rules sampled from the 4,000-rule library based on document type **${documentType}**.
+
+| Rule ID | Description | Severity | Status | Impact |
+| --- | --- | --- | --- | --- |
+| R-1001 | Document control completeness | Major | Partial | Revision/approval gaps |
+| R-2140 | Spec vs design consistency | Major | Partial | Cross-check support file |
+
+## SECTION 8: FINAL VERDICT AND ACTIONS
+**Status:** Approved with Comments
+
+Configure a live AI key for full Check-1 / Check-2 / 4K-rule scoring on this package.
+
+## SECTION 9: FINDINGS BY PRIORITY
+### Major
+| ID | Description | Impact | Action | Owner |
+| --- | --- | --- | --- | --- |
+| M-01 | Incomplete approval trail | Gate risk | Complete title block | Document controller |
+
+### Extract preview
+${excerpt}
+`.trim();
+}
+
+module.exports = { generateDummyQaQcReport };

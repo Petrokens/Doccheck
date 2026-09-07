@@ -1,8 +1,26 @@
+import { getThemeMode, setThemeMode } from '@/lib/theme';
+import { useState } from 'react';
+
 export default function Settings() {
+  const [mode, setMode] = useState(getThemeMode());
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold text-blue-800 dark:text-blue-400 mb-4">Settings</h1>
-      <p className="text-gray-700 dark:text-gray-300">Theme toggle, language, and layout preferences go here.</p>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold text-[#0B4D99]">Settings</h1>
+      <div className="mt-4 max-w-lg rounded-2xl border border-[#c4d2f0] bg-white p-5 dark:border-dash-border dark:bg-dash-surface">
+        <label className="text-sm font-medium">Theme</label>
+        <select
+          value={mode}
+          onChange={(e) => {
+            setMode(e.target.value);
+            setThemeMode(e.target.value);
+          }}
+          className="mt-2 w-full rounded-lg border border-[#c4d2f0] bg-white px-3 py-2 dark:border-dash-border dark:bg-dash-surface"
+        >
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="system">System</option>
+        </select>
+      </div>
     </div>
   );
 }

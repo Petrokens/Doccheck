@@ -1,14 +1,16 @@
 const multer = require('multer');
 const path = require('path');
 
-const storage = multer.memoryStorage();
+const BLOCKED = new Set(['.exe', '.msi', '.bat', '.cmd', '.com', '.scr', '.ps1', '.vbs', '.jar', '.dll', '.reg']);
 
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-  if (allowedTypes.includes(file.mimetype)) cb(null, true);
-  else cb(new Error('Only PDF or DOCX files are allowed'), false);
-};
-
-const upload = multer({ storage, fileFilter });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (BLOCKED.has(ext)) return cb(new Error('Executable files are not allowed.'), false);
+    cb(null, true);
+  },
+  limits: { fileSize: 80 * 1024 * 1024 },
+});
 
 module.exports = upload;
