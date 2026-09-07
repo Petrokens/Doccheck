@@ -10,6 +10,7 @@ const securityHeaders = require('./middleware/securityHeaders');
 const { globalLimiter } = require('./middleware/rateLimits');
 const { isAllowedOrigin } = require('./security/validateEnv');
 const { publicError } = require('./security/httpErrors');
+const { mountSwagger } = require('./docs/swagger');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -44,6 +45,7 @@ app.use('/api/sidebar', sidebarRoutes);
 app.use('/api/users', users);
 app.use('/api/roles', roles);
 app.use('/api/permissions', permissions);
+mountSwagger(app);
 
 app.use((req, res) => publicError(res, 404, 'Not found'));
 

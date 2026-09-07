@@ -10,6 +10,7 @@ const MASTER_ONLY_PATHS = new Set([
   '/dashboard/env-settings',
   '/dashboard/audit-reports',
   '/dashboard/system-logs',
+  '/dashboard/api-docs',
 ]);
 
 const router = express.Router();

@@ -13,6 +13,7 @@ import Settings from '@/pages/dashboard/Settings';
 import Info from '@/pages/dashboard/Info';
 import SystemStatus from '@/pages/dashboard/SystemStatus';
 import PlaceholderPage from '@/pages/dashboard/PlaceholderPage';
+import ApiDocs from '@/pages/dashboard/ApiDocs';
 import {
   AccessControl,
   AuditLog,
@@ -71,6 +72,7 @@ function AppRoutesInner() {
         <Route path="audit-log" element={<AuditLog />} />
         <Route path="audit-reports" element={<RoleProtectedRoute><PlaceholderPage title="Audit Reports" body="Use History and Audit Log for QA/QC traceability." /></RoleProtectedRoute>} />
         <Route path="system-logs" element={<RoleProtectedRoute><PlaceholderPage title="System Logs" body="Runtime logs are written to the API console." /></RoleProtectedRoute>} />
+        <Route path="api-docs" element={<RoleProtectedRoute><ApiDocs /></RoleProtectedRoute>} />
       </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />

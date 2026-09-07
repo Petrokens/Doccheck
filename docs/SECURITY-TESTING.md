@@ -25,7 +25,7 @@ Do not test third-party services (OpenAI, Groq, email providers, or the testerâ€
 | Area | Notes |
 |------|--------|
 | `client` SPA (Vite/React) | Auth pages, dashboard, uploads, reports, admin UI |
-| `server` Express API | `/api/auth`, `/api/qaqc`, `/api/users`, `/api/roles`, `/api/permissions`, `/api/sidebar`, `/api/health` |
+| `server` Express API | `/api/auth`, `/api/qaqc`, `/api/users`, `/api/roles`, `/api/permissions`, `/api/sidebar`, `/api/health`, `/api/docs` (Swagger UI, if enabled) |
 | PostgreSQL **test** database | Data created during the test only |
 | Session model | Access JWT + refresh cookie |
 | File upload pipeline | Type, size, content mismatch, malware-like documents **in the lab only** |

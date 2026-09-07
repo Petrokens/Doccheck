@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { getSidebarData } from '@/services/processReportService';
 import { BRAND_EYEBROW, BRAND_TAGLINE } from '@/lib/brandCopy';
 import {
-  Activity, Building, Clipboard, Clock, Cog, Cpu, FileSearch, FileText, Flame,
+  Activity, BookOpen, Building, Clipboard, Clock, Cog, Cpu, FileSearch, FileText, Flame,
   Info, Key, Layers, Lock, PieChart, RadioTower, Route, Server, Shield, Sliders,
   Thermometer, TrendingUp, Users, Wrench, Zap,
 } from 'lucide-react';
@@ -14,7 +14,7 @@ const iconMap = {
   shield: Shield, layers: Layers, clock: Clock, info: Info, brain: Cpu,
   filetext: FileText, trendingup: TrendingUp, clipboard: Clipboard, piechart: PieChart,
   server: Server, sliders: Sliders, users: Users, key: Key, lock: Lock,
-  filesearch: FileSearch, filecode: FileText,
+  filesearch: FileSearch, filecode: FileText, bookopen: BookOpen,
 };
 
 export default function Sidebar() {

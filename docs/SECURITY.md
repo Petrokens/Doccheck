@@ -95,6 +95,12 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 
 ---
 
+## 5.1 API documentation
+
+Swagger UI is served at `/api/docs` (OpenAPI JSON at `/api/docs.json`) when `ENABLE_SWAGGER=true`, or by default when `NODE_ENV` is not `production`. Leave it disabled on internet-facing production hosts.
+
+---
+
 ## 6. Upload and document processing
 
 | Control | Value |
@@ -194,4 +200,5 @@ These are honest limits of the current stack, not excuses to skip testing:
 - [ ] `ALLOW_DEMO_REPORTS=0`
 - [ ] `AUTH_ALLOW_PUBLIC_REGISTER` unset/false
 - [ ] PostgreSQL not exposed to the internet
+- [ ] Leave Swagger UI off in production (`ENABLE_SWAGGER` unset/false)
 - [ ] Restart API after this release and log in again

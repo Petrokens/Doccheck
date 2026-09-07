@@ -51,6 +51,8 @@ Login → pick discipline → upload main document (optional support) → live c
 
 ## API (QA/QC only)
 
+Interactive docs: **Swagger UI** at `http://localhost:5000/api/docs` (OpenAPI JSON at `/api/docs.json`). Master users can also open **API Docs** in the dashboard.
+
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `/api/auth/login` | Login |

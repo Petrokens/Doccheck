@@ -24,6 +24,8 @@
     "pdf-parse": "^1.1.1",
     "pdfkit": "^0.18.0",
     "pg": "^8.21.0",
+    "swagger-ui-dist": "^5.32.15",
+    "swagger-ui-express": "^5.0.1",
     "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },

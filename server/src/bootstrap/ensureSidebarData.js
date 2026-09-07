@@ -39,6 +39,7 @@ const ITEMS = [
   { id: 24, section_id: 7, label: 'Access Control', path: '/dashboard/permissions', icon_name: 'Lock', display_order: 3 },
   { id: 25, section_id: 7, label: 'Audit Reports', path: '/dashboard/audit-reports', icon_name: 'FileSearch', display_order: 4 },
   { id: 26, section_id: 7, label: 'System Logs', path: '/dashboard/system-logs', icon_name: 'FileCode', display_order: 5 },
+  { id: 28, section_id: 7, label: 'API Docs', path: '/dashboard/api-docs', icon_name: 'BookOpen', display_order: 6 },
 ];
 
 const REMOVED_ITEM_IDS = [27]; // Create User — no longer shown

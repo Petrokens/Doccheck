@@ -19,6 +19,7 @@ async function startServer() {
   await ensureSidebarData();
   app.listen(PORT, HOST, () => {
     console.log(`Petrolenz QA/QC API running on http://${HOST}:${PORT}`);
+    console.log(`OpenAPI Swagger UI: http://${HOST}:${PORT}/api/docs`);
   });
 }
 
