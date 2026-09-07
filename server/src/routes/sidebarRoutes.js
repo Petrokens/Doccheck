@@ -19,6 +19,7 @@ router.get('/', verifyToken, async (req, res) => {
     const isMaster = Number(req.user?.role_id) === 1;
     const sections = await sidebarRepo.listSectionsWithItems();
     const filtered = sections
+      .filter((section) => !['analytics', 'system'].includes(String(section.title || '').toLowerCase()))
       .map((section) => ({
         ...section,
         items: section.items.filter((item) => isMaster || !MASTER_ONLY_PATHS.has(item.path)),

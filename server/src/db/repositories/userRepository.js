@@ -88,6 +88,14 @@ async function countByRole(roleId) {
   return rows[0]?.n || 0;
 }
 
+async function findByRoleId(roleId) {
+  const { rows } = await pool.query(
+    'SELECT * FROM users WHERE role_id = $1 ORDER BY created_at ASC',
+    [roleId],
+  );
+  return rows.map(mapUser);
+}
+
 async function findAllSorted() {
   const { rows } = await pool.query(
     `SELECT id, user_id, username, email, role_id, last_login_at, created_at
@@ -142,6 +150,7 @@ module.exports = {
   clearRefreshToken,
   clearRefreshTokenByUserId,
   countByRole,
+  findByRoleId,
   findAllSorted,
   updateByUserId,
   deleteByUserId,

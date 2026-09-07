@@ -5,7 +5,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const qaqcRoutes = require('./routes/qaqcRoutes');
 const sidebarRoutes = require('./routes/sidebarRoutes');
-const { users, roles, permissions } = require('./routes/adminRoutes');
+const { users, roles, permissions, systemLogs } = require('./routes/adminRoutes');
 const securityHeaders = require('./middleware/securityHeaders');
 const { globalLimiter } = require('./middleware/rateLimits');
 const { isAllowedOrigin } = require('./security/validateEnv');
@@ -45,6 +45,7 @@ app.use('/api/sidebar', sidebarRoutes);
 app.use('/api/users', users);
 app.use('/api/roles', roles);
 app.use('/api/permissions', permissions);
+app.use('/api/system-logs', systemLogs);
 mountSwagger(app);
 
 app.use((req, res) => publicError(res, 404, 'Not found'));

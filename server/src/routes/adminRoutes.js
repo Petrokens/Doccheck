@@ -7,6 +7,7 @@ const requireTrustedOrigin = require('../middleware/requireTrustedOrigin');
 const users = express.Router();
 users.use(verifyToken, requireRole([1]));
 users.get('/', admin.listUsers);
+users.patch('/:userId', requireTrustedOrigin, admin.updateUser);
 users.delete('/:userId', requireTrustedOrigin, admin.deleteUser);
 
 const roles = express.Router();
@@ -21,4 +22,8 @@ const permissions = express.Router();
 permissions.use(verifyToken, requireRole([1]));
 permissions.get('/', admin.listPermissions);
 
-module.exports = { users, roles, permissions };
+const systemLogs = express.Router();
+systemLogs.use(verifyToken, requireRole([1]));
+systemLogs.get('/', admin.listSystemLogs);
+
+module.exports = { users, roles, permissions, systemLogs };

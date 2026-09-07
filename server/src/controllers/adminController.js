@@ -2,7 +2,7 @@ const userRepo = require('../db/repositories/userRepository');
 const roleRepo = require('../db/repositories/roleRepository');
 const permissionRepo = require('../db/repositories/permissionRepository');
 const { publicError, internalError } = require('../security/httpErrors');
-const { audit } = require('../security/audit');
+const { audit, recent, startedAt } = require('../security/audit');
 
 exports.listUsers = async (_req, res) => {
   try {
@@ -20,6 +20,64 @@ exports.listUsers = async (_req, res) => {
     });
   } catch (error) {
     return internalError(res, error, 'Failed to list users');
+  }
+};
+
+exports.updateUser = async (req, res) => {
+  try {
+    const targetId = String(req.params.userId || '');
+    if (!targetId) return publicError(res, 400, 'User id required');
+    const target = await userRepo.findByUserId(targetId);
+    if (!target) return publicError(res, 404, 'User not found');
+
+    const patch = {};
+    if (req.body?.username != null) {
+      const username = String(req.body.username || '').trim().slice(0, 255);
+      if (!username) return publicError(res, 400, 'Username is required');
+      patch.username = username;
+    }
+    if (req.body?.role_id != null && req.body.role_id !== '') {
+      const roleId = Number(req.body.role_id);
+      if (!Number.isInteger(roleId) || roleId < 1) return publicError(res, 400, 'Invalid role');
+      const role = await roleRepo.findById(roleId);
+      if (!role) return publicError(res, 404, 'Role not found');
+      if (Number(target.role_id) === 1 && roleId !== 1) {
+        const masters = await userRepo.countByRole(1);
+        if (masters <= 1) return publicError(res, 400, 'Cannot demote the last Master user.');
+      }
+      patch.role_id = roleId;
+    }
+    if (!Object.keys(patch).length) return publicError(res, 400, 'No changes provided');
+
+    const updated = await userRepo.updateByUserId(targetId, patch);
+    audit('admin.user_update', { actor: req.user?.user_id, target: targetId, fields: Object.keys(patch) });
+    return res.json({
+      user: {
+        id: updated.id,
+        user_id: updated.user_id,
+        username: updated.username,
+        email: updated.email,
+        role_id: updated.role_id,
+        last_login_at: updated.last_login_at,
+        created_at: updated.created_at,
+      },
+    });
+  } catch (error) {
+    return internalError(res, error, 'Failed to update user');
+  }
+};
+
+exports.listSystemLogs = async (_req, res) => {
+  try {
+    return res.json({
+      startedAt,
+      now: new Date().toISOString(),
+      node: process.version,
+      env: process.env.NODE_ENV || 'development',
+      events: recent(200),
+    });
+  } catch (error) {
+    return internalError(res, error, 'Failed to load system logs');
   }
 };
 

@@ -142,5 +142,16 @@ export async function fetchReportDashboardStats() {
 
 export async function getSidebarData() {
   const response = await api.get('/sidebar');
-  return response.data;
+  const sections = Array.isArray(response.data) ? response.data : [];
+  return sections
+    .filter((section) => !['analytics', 'system'].includes(String(section.title || '').toLowerCase()))
+    .map((section) => ({
+      ...section,
+      items: (section.items || []).filter((item) => {
+        const label = String(item.label || '').toLowerCase();
+        const path = String(item.path || '').toLowerCase();
+        return label !== 'report templates' && !path.endsWith('/templates');
+      }),
+    }))
+    .filter((section) => section.items?.length);
 }

@@ -53,6 +53,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
       { name: 'Users', description: 'Master-only user administration' },
       { name: 'Roles', description: 'Master-only role administration' },
       { name: 'Permissions', description: 'Master-only permission catalog' },
+      { name: 'System', description: 'Runtime logs and health' },
     ],
     paths: {
       '/api/health': {
@@ -120,7 +121,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
             required: true,
             ...jsonContent(
               { $ref: '#/components/schemas/LoginRequest' },
-              { email: 'admin@petrolenz.local', password: 'your-password' },
+              { email: 'admin@petrolenz.com', password: 'your-password' },
             ),
           },
           responses: {
@@ -486,6 +487,45 @@ function buildOpenApiSpec({ serverUrl } = {}) {
       },
 
       '/api/users/{userId}': {
+        patch: {
+          tags: ['Users'],
+          summary: 'Update user',
+          description: 'Update username or role. Cannot demote the last Master.',
+          operationId: 'updateUser',
+          security: bearer,
+          parameters: [
+            {
+              name: 'userId',
+              in: 'path',
+              required: true,
+              schema: { type: 'string' },
+              description: 'Public user id (`user_id`)',
+            },
+            ...trustedOriginParams,
+          ],
+          requestBody: {
+            required: true,
+            ...jsonContent(
+              {
+                type: 'object',
+                properties: {
+                  username: { type: 'string' },
+                  role_id: { type: 'integer' },
+                },
+              },
+              { username: 'engineer.one', role_id: 2 },
+            ),
+          },
+          responses: {
+            200: {
+              description: 'Updated',
+              ...jsonContent({ $ref: '#/components/schemas/User' }),
+            },
+            400: errorResponse('Not allowed', 'Cannot demote the last Master user.'),
+            ...authErrors,
+            404: errorResponse('Not found', 'User not found'),
+          },
+        },
         delete: {
           tags: ['Users'],
           summary: 'Delete user',
@@ -623,6 +663,41 @@ function buildOpenApiSpec({ serverUrl } = {}) {
             200: {
               description: 'Permission catalog',
               ...jsonContent({ $ref: '#/components/schemas/PermissionsResponse' }),
+            },
+            ...authErrors,
+          },
+        },
+      },
+
+      '/api/system-logs': {
+        get: {
+          tags: ['System'],
+          summary: 'Recent in-memory audit events',
+          description: 'Master-only. Events since the API process started (ring buffer).',
+          operationId: 'listSystemLogs',
+          security: bearer,
+          responses: {
+            200: {
+              description: 'Runtime log snapshot',
+              ...jsonContent({
+                type: 'object',
+                properties: {
+                  startedAt: { type: 'string', format: 'date-time' },
+                  now: { type: 'string', format: 'date-time' },
+                  node: { type: 'string' },
+                  env: { type: 'string' },
+                  events: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        ts: { type: 'string', format: 'date-time' },
+                        event: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              }),
             },
             ...authErrors,
           },

@@ -33,6 +33,15 @@ async function deleteItemsNotIn(ids) {
   await pool.query('DELETE FROM sidebar_items WHERE NOT (id = ANY($1::int[]))', [ids]);
 }
 
+async function deleteSection(id) {
+  await pool.query('DELETE FROM sidebar_sections WHERE id = $1', [id]);
+}
+
+async function deleteSectionsNotIn(ids) {
+  if (!ids?.length) return;
+  await pool.query('DELETE FROM sidebar_sections WHERE NOT (id = ANY($1::int[]))', [ids]);
+}
+
 async function listSectionsWithItems() {
   const { rows: sections } = await pool.query(
     'SELECT * FROM sidebar_sections ORDER BY display_order, id',
@@ -54,4 +63,12 @@ async function listSectionsWithItems() {
   }));
 }
 
-module.exports = { upsertSection, upsertItem, deleteItem, deleteItemsNotIn, listSectionsWithItems };
+module.exports = {
+  upsertSection,
+  upsertItem,
+  deleteItem,
+  deleteItemsNotIn,
+  deleteSection,
+  deleteSectionsNotIn,
+  listSectionsWithItems,
+};

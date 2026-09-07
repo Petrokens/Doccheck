@@ -12,8 +12,9 @@ import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/dashboard/Settings';
 import Info from '@/pages/dashboard/Info';
 import SystemStatus from '@/pages/dashboard/SystemStatus';
-import PlaceholderPage from '@/pages/dashboard/PlaceholderPage';
 import ApiDocs from '@/pages/dashboard/ApiDocs';
+import AuditReports from '@/pages/dashboard/AuditReports';
+import SystemLogs from '@/pages/dashboard/SystemLogs';
 import {
   AccessControl,
   AuditLog,
@@ -56,9 +57,7 @@ function AppRoutesInner() {
           <Route path="general-discipline" element={<DisciplineWorkspace department="general" />} />
           <Route path="history" element={<History />} />
           <Route path="ai-review" element={<AIReview />} />
-          <Route path="templates" element={<AIReview />} />
-          <Route path="score-trends" element={<History title="Score Trends" />} />
-          <Route path="doc-statistics" element={<History title="Document Stats" />} />
+          <Route path="templates" element={<Navigate to="/dashboard/qa-qc/process" replace />} />
           <Route path="user-activity" element={<AuditLog />} />
         </Route>
         <Route path="profile" element={<Profile />} />
@@ -70,8 +69,8 @@ function AppRoutesInner() {
         <Route path="roles" element={<RoleProtectedRoute><RoleManagement /></RoleProtectedRoute>} />
         <Route path="permissions" element={<RoleProtectedRoute><AccessControl /></RoleProtectedRoute>} />
         <Route path="audit-log" element={<AuditLog />} />
-        <Route path="audit-reports" element={<RoleProtectedRoute><PlaceholderPage title="Audit Reports" body="Use History and Audit Log for QA/QC traceability." /></RoleProtectedRoute>} />
-        <Route path="system-logs" element={<RoleProtectedRoute><PlaceholderPage title="System Logs" body="Runtime logs are written to the API console." /></RoleProtectedRoute>} />
+        <Route path="audit-reports" element={<RoleProtectedRoute><AuditReports /></RoleProtectedRoute>} />
+        <Route path="system-logs" element={<RoleProtectedRoute><SystemLogs /></RoleProtectedRoute>} />
         <Route path="api-docs" element={<RoleProtectedRoute><ApiDocs /></RoleProtectedRoute>} />
       </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
