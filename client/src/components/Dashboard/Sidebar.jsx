@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useSidebarAccess } from '@/context/SidebarAccessContext';
 import { BRAND_EYEBROW, BRAND_TAGLINE } from '@/lib/brandCopy';
+import brandIcon from '@/assets/icon.png';
 import { buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -23,11 +24,16 @@ export default function Sidebar() {
   const { sections } = useSidebarAccess();
 
   return (
-    <aside id="app-sidebar" className="flex h-full min-h-0 w-64 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside id="app-sidebar" className="flex h-full min-h-0 w-64 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[var(--shadow-card)]">
       <div className="shrink-0 px-4 py-4">
-        <p className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{BRAND_EYEBROW}</p>
-        <p className="text-[1.35rem] font-black tracking-[0.08em] text-sidebar-primary">PETROLENZ</p>
-        <p className="mt-1 text-[0.72rem] text-muted-foreground">{BRAND_TAGLINE}</p>
+        <div className="flex items-center gap-3">
+          <img src={brandIcon} alt="" className="size-16 shrink-0 rounded-xl object-contain" />
+          <div className="min-w-0">
+            <p className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{BRAND_EYEBROW}</p>
+            <p className="text-[1.25rem] font-black tracking-[0.08em] text-sidebar-primary">PETROLENZ</p>
+          </div>
+        </div>
+        <p className="mt-2 text-[0.72rem] leading-snug text-muted-foreground">{BRAND_TAGLINE}</p>
       </div>
       <Separator className="shrink-0" />
       <ScrollArea className="min-h-0 flex-1 overflow-hidden">

@@ -5,7 +5,7 @@ import { useSessionAuth } from '@/context/SessionAuthContext';
 import { publicApiError } from '@/lib/uploadSafety';
 import { toast } from 'sonner';
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
-import logoMark from '@/assets/petrolenz-favicon.png';
+import logoMark from '@/assets/icon.png';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -110,27 +110,27 @@ export default function LoginForm() {
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-center gap-2">
-        <img src={logoMark} alt="" className="h-10 w-10 object-contain" />
-        <span
-          className="text-[26px] font-bold tracking-[0.06em] text-foreground"
-          style={{ fontFamily: 'Merriweather, Georgia, serif' }}
-        >
-          PETROLENZ
-        </span>
+      <div className="flex items-center gap-3">
+        <img src={logoMark} alt="Petrolenz" className="h-16 w-16 shrink-0 rounded-xl object-contain" />
+        <div>
+          <p className="font-heading text-2xl font-bold tracking-[0.08em] text-foreground">PETROLENZ</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            QA / QC Platform
+          </p>
+        </div>
       </div>
 
-      <h1 className="mt-4 text-center font-heading text-[28px] font-bold leading-none">
-        {otpStep ? 'Verify login' : 'Login'}
+      <h1 className="mt-10 font-heading text-3xl font-semibold tracking-wide text-foreground">
+        {otpStep ? 'Verify login' : 'Sign in'}
       </h1>
-      <p className="mt-1.5 text-center text-[13px] text-muted-foreground">
+      <p className="mt-2 text-sm text-muted-foreground">
         {otpStep
           ? `Enter the 6-digit code sent to ${otpStep.emailMasked}`
           : 'AI QC Checker for Engineering Documents'}
       </p>
 
       {otpStep ? (
-        <form onSubmit={handleVerify} className="mt-5 space-y-3.5">
+        <form onSubmit={handleVerify} className="mt-8 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="otp">Email verification code</Label>
             <Input
@@ -168,7 +168,7 @@ export default function LoginForm() {
           </div>
         </form>
       ) : (
-        <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -198,16 +198,14 @@ export default function LoginForm() {
                 placeholder="Enter your password"
                 className="h-11 bg-muted pr-11"
               />
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? <EyeOff /> : <Eye />}
-              </Button>
+                {showPassword ? <EyeOff className="size-4 shrink-0" /> : <Eye className="size-4 shrink-0" />}
+              </button>
             </div>
           </div>
 
@@ -230,7 +228,7 @@ export default function LoginForm() {
         </form>
       )}
 
-      <p className="mt-5 text-center text-[11px] text-muted-foreground">© 2026 Petrolenz. All rights reserved.</p>
+      <p className="mt-10 text-[11px] text-muted-foreground">© 2026 Petrolenz. All rights reserved.</p>
     </div>
   );
 }

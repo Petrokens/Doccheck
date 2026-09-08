@@ -10,6 +10,7 @@ import {
 import { jwtDecode } from 'jwt-decode';
 import { getUserProfile, refreshAccessToken, logoutUser as apiLogout } from '@/services/authService';
 import { clearAccessToken, getAccessToken, setAccessToken } from '@/lib/axios';
+import { clearRoleTheme } from '@/lib/theme';
 
 function isAccessTokenValid(token) {
   if (!token || typeof token !== 'string') return false;
@@ -79,6 +80,7 @@ export function SessionAuthProvider({ children }) {
     await apiLogout();
     setUser(null);
     setAuthenticated(false);
+    clearRoleTheme();
   }, []);
 
   const value = useMemo(

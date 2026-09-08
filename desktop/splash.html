@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' file:; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <title>Petrolenz QA/QC</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #050b14;
+      }
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        background: #050b14;
+      }
+    </style>
+  </head>
+  <body>
+    <video id="splash" autoplay muted playsinline></video>
+    <script>
+      const video = document.getElementById('splash');
+      const params = new URLSearchParams(location.search);
+      const src = params.get('src');
+      const maxMs = Number(params.get('maxMs') || 5500);
+      let finished = false;
+
+      function done() {
+        if (finished) return;
+        finished = true;
+        if (window.petrolenzSplash && typeof window.petrolenzSplash.finished === 'function') {
+          window.petrolenzSplash.finished();
+        }
+      }
+
+      if (src) video.src = decodeURIComponent(src);
+      video.addEventListener('ended', done);
+      video.addEventListener('error', done);
+      setTimeout(done, maxMs);
+
+      video.play().catch(() => {
+        // Autoplay blocked — still advance after timeout.
+      });
+    </script>
+  </body>
+</html>

@@ -353,7 +353,7 @@ export default function Process({
             <Badge variant="outline" className="border-emerald-500/40 text-emerald-300">{isGenerating ? 'Running' : 'Idle'}</Badge>
           </CardHeader>
           <CardContent>
-            <div ref={consoleBodyRef} className="h-[320px] overflow-auto rounded-lg border border-[#2a3548] bg-black p-3 font-mono text-xs leading-6 text-emerald-400">
+            <div ref={consoleBodyRef} className="h-[320px] overflow-auto rounded-[var(--radius)] border border-border bg-dash-console p-3 font-mono text-xs leading-6 text-dash-console-text">
               <pre className="whitespace-pre-wrap break-words">
                 {terminalOutput}
                 <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-emerald-400 align-middle" />

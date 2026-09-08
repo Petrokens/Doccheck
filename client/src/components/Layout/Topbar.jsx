@@ -16,6 +16,7 @@ import { useSessionAuth } from '@/context/SessionAuthContext';
 import { resolveIsDark, setThemeMode } from '@/lib/theme';
 import { MAIN_PROFILE, MAIN_SETTINGS } from '@/lib/dashboardPaths';
 import { BRAND_EYEBROW } from '@/lib/brandCopy';
+import brandIcon from '@/assets/icon.png';
 
 function formatGmtOffset(date) {
   const offset = -date.getTimezoneOffset();
@@ -44,9 +45,10 @@ export default function Topbar() {
     .toUpperCase();
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-[var(--shadow-card)]">
       <div className="flex items-center gap-3">
         <SidebarMenuButton />
+        <img src={brandIcon} alt="" className="hidden size-12 rounded-lg object-contain sm:block" />
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{BRAND_EYEBROW}</p>
           <p className="text-sm font-semibold">QA / QC Workspace</p>

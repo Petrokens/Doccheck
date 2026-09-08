@@ -9,7 +9,10 @@ function escapeHtml(value) {
 function layout({ heading, bodyHtml }) {
   return `<!DOCTYPE html>
 <html>
-  <body style="margin:0;padding:0;background:#f4f6f8;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
+  <head>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body style="margin:0;padding:0;background:#f4f6f8;font-family:Barlow,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:24px 12px;">
       <tr>
         <td align="center">
