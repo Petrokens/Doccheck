@@ -34,6 +34,14 @@ function generateOtp() {
   return String(crypto.randomInt(100000, 1000000));
 }
 
+function shouldSkipLoginOtp() {
+  // OTP is opt-in. Desktop/Render login works without SMTP unless you force OTP.
+  const requireOtp = String(process.env.AUTH_REQUIRE_OTP || '').trim().toLowerCase();
+  if (requireOtp === 'true' || requireOtp === '1') return false;
+  const skip = String(process.env.AUTH_SKIP_OTP || 'true').trim().toLowerCase();
+  return skip !== 'false' && skip !== '0';
+}
+
 async function createAndSendLoginOtp(user) {
   await otpRepo.invalidateOpenForUser(user.user_id);
   const otp = generateOtp();
@@ -49,7 +57,7 @@ async function createAndSendLoginOtp(user) {
     const sent = await sendEmail({ to: user.email, ...mail });
     if (sent.skipped) {
       await otpRepo.consume(challengeId);
-      const error = new Error('Email service is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS.');
+      const error = new Error('Email service is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS (or set AUTH_SKIP_OTP=true).');
       error.statusCode = 503;
       throw error;
     }
@@ -176,6 +184,13 @@ exports.login = async (req, res) => {
       }
       return publicError(res, 401, INVALID_LOGIN_MESSAGE);
     }
+
+    if (shouldSkipLoginOtp()) {
+      const accessToken = await issueSession(res, user);
+      audit('auth.login', { user_id: user.user_id, ip: clientIp(req), skip_otp: true });
+      return res.json({ message: 'Login successful', accessToken });
+    }
+
     const challenge = await createAndSendLoginOtp(user);
     audit('auth.otp_sent', { user_id: user.user_id, ip: clientIp(req) });
     return res.json({

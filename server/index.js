@@ -11,7 +11,19 @@ const ensureSecuritySchema = require('./src/bootstrap/ensureSecuritySchema');
 const ensureRoleSidebarAccess = require('./src/bootstrap/ensureRoleSidebarAccess');
 
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.BIND_HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
+
+function resolveBindHost() {
+  const explicit = String(process.env.BIND_HOST || '').trim();
+  // Render / cloud hosts must listen on all interfaces
+  if (process.env.RENDER === 'true' || process.env.RENDER_SERVICE_ID) {
+    return '0.0.0.0';
+  }
+  if (explicit) return explicit;
+  if (process.env.NODE_ENV === 'production') return '0.0.0.0';
+  return '127.0.0.1';
+}
+
+const HOST = resolveBindHost();
 
 async function startServer() {
   await connectDB();
@@ -19,7 +31,12 @@ async function startServer() {
   await ensureMasterUser();
   await ensureSidebarData();
   await ensureRoleSidebarAccess();
-  app.listen(PORT, HOST, () => {
+  app.listen(PORT, HOST, (err) => {
+    if (err) {
+      console.error('Listen failed:', err);
+      process.exit(1);
+      return;
+    }
     console.log(`Petrolenz QA/QC API running on http://${HOST}:${PORT}`);
     console.log(`OpenAPI Swagger UI: http://${HOST}:${PORT}/api/docs`);
   });

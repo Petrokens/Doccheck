@@ -15,5 +15,12 @@ export function validateUploadFile(file) {
 }
 
 export function publicApiError(err, fallback = 'Request failed') {
-  return err?.response?.data?.error || fallback;
+  if (err?.response?.data?.error) return err.response.data.error;
+  if (err?.code === 'ECONNABORTED' || String(err?.message || '').toLowerCase().includes('timeout')) {
+    return 'Server is not responding. The API may be waking up or offline — try again in a minute.';
+  }
+  if (!err?.response && (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error')) {
+    return 'Cannot reach API (https://petrolenz.onrender.com). Check internet or Render service status.';
+  }
+  return fallback;
 }

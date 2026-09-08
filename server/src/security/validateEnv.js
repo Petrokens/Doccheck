@@ -76,7 +76,8 @@ function isAllowedOrigin(origin) {
   const normalized = String(origin).replace(/\/$/, '');
   const allow = allowedOrigins();
   if (allow.includes(normalized)) return true;
-  if (!isProduction() && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized)) return true;
+  // Electron packaged UI + local Vite (any localhost port)
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalized)) return true;
   return false;
 }
 

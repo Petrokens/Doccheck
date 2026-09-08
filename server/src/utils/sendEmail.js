@@ -38,6 +38,9 @@ function getTransporter() {
       // Gmail app passwords are often pasted with spaces
       pass: String(process.env.SMTP_PASS).replace(/\s+/g, '').trim(),
     },
+    connectionTimeout: 12000,
+    greetingTimeout: 12000,
+    socketTimeout: 20000,
   });
   return transporter;
 }

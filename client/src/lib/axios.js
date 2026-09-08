@@ -7,7 +7,8 @@ let accessToken = null;
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
-  timeout: 20000,
+  // Render free tier can cold-start for 60s+
+  timeout: import.meta.env.PROD ? 90000 : 20000,
 });
 
 api.interceptors.request.use((config) => {
@@ -25,6 +26,8 @@ api.interceptors.response.use(
     const url = originalRequest?.url || '';
     const isAuthPublic =
       url.includes('/auth/login') ||
+      url.includes('/auth/login/verify-otp') ||
+      url.includes('/auth/login/resend-otp') ||
       url.includes('/auth/refresh') ||
       url.includes('/auth/forgot-password') ||
       url.includes('/auth/reset-password');
