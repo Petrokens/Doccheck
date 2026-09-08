@@ -113,11 +113,15 @@ export function UserManagement() {
       const emailedTo = form.email.trim();
       setForm(EMPTY_USER_FORM);
       setFormOpen(false);
-      toast.success(
-        created?.email_sent
-          ? `User created. Login credentials emailed to ${emailedTo}`
-          : 'User created. Credentials email was skipped — set RESEND_API_KEY.',
-      );
+      if (created?.email_sent) {
+        toast.success(`User created. Login credentials emailed to ${emailedTo}`);
+      } else {
+        toast.warning(
+          created?.email_error
+            ? `User created, but email failed: ${created.email_error}`
+            : `User created, but credentials email was not sent to ${emailedTo}. Check SMTP settings and spam.`,
+        );
+      }
       load();
     } catch (err) {
       toast.error(publicApiError(err, 'Could not create user'));

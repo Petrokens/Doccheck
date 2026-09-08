@@ -112,6 +112,7 @@ exports.register = async (req, res) => {
     });
     audit('user.register', { actor: req.user?.user_id || 'public', created: user.user_id, role_id: nextRole });
     let emailSent = false;
+    let emailError = '';
     try {
       const mail = credentialsEmail({
         username: user.username,
@@ -122,16 +123,21 @@ exports.register = async (req, res) => {
       const sent = await sendEmail({ to: user.email, ...mail });
       emailSent = !sent.skipped;
       if (sent.skipped) {
+        emailError = 'SMTP is not configured (set SMTP_HOST, SMTP_USER, SMTP_PASS).';
         console.warn(`Credentials email skipped for ${user.email}`);
+      } else {
+        audit('user.credentials_emailed', { actor: req.user?.user_id || 'public', user_id: user.user_id });
       }
     } catch (mailError) {
-      console.warn('Credentials email failed:', mailError?.message || mailError);
+      emailError = mailError?.message || 'Failed to send credentials email.';
+      console.warn('Credentials email failed:', emailError);
     }
     return res.status(201).json({
       message: emailSent
         ? 'User registered successfully. Login credentials were emailed.'
         : 'User registered successfully. Login email could not be sent.',
       email_sent: emailSent,
+      email_error: emailError || undefined,
       user: {
         id: user.id,
         user_id: user.user_id,

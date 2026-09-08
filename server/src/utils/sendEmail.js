@@ -35,7 +35,8 @@ function getTransporter() {
     secure,
     auth: {
       user: String(process.env.SMTP_USER).trim(),
-      pass: String(process.env.SMTP_PASS).trim(),
+      // Gmail app passwords are often pasted with spaces
+      pass: String(process.env.SMTP_PASS).replace(/\s+/g, '').trim(),
     },
   });
   return transporter;
@@ -58,7 +59,15 @@ async function sendEmail({ to, subject, html, text }) {
     html,
     text,
   });
-  return { skipped: false, provider: 'smtp', id: info?.messageId || null };
+
+  if (info.rejected?.length) {
+    throw new Error(`SMTP rejected recipient(s): ${info.rejected.join(', ')}`);
+  }
+
+  console.log(
+    `[email] sent via smtp to=${recipients.join(',')} id=${info.messageId || 'n/a'} response=${info.response || 'n/a'}`,
+  );
+  return { skipped: false, provider: 'smtp', id: info.messageId || null };
 }
 
 function frontendOrigin() {
