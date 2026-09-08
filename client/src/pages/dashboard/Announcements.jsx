@@ -79,16 +79,8 @@ export default function Announcements() {
     event.preventDefault();
     setSaving(true);
     try {
-      const result = await createAnnouncement(form);
-      const emailed = result.email?.sent || 0;
-      const skipped = result.email?.skipped || 0;
-      toast.success(
-        emailed
-          ? `Announcement posted and emailed to ${emailed} user${emailed === 1 ? '' : 's'}`
-          : skipped
-            ? 'Announcement posted. Email was skipped — set RESEND_API_KEY.'
-            : 'Announcement posted. No users in the selected roles.',
-      );
+      await createAnnouncement(form);
+      toast.success('Announcement posted.');
       setOpen(false);
       load();
     } catch (err) {
@@ -108,8 +100,8 @@ export default function Announcements() {
           <h1 className="mt-1 font-heading text-2xl font-semibold">Announcements</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             {canCompose
-              ? 'Post a notice and email it to every user in the roles you select.'
-              : 'Notices emailed to your role appear here.'}
+              ? 'Post a notice for users in the roles you select.'
+              : 'Notices for your role appear here.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -134,7 +126,7 @@ export default function Announcements() {
             </CardTitle>
             <CardDescription>
               {canCompose
-                ? 'Create a notice and choose which roles should receive the email.'
+                ? 'Create a notice and choose which roles should see it.'
                 : 'When a Master Admin sends a notice to your role, it will show up here.'}
             </CardDescription>
           </CardHeader>
@@ -150,13 +142,11 @@ export default function Announcements() {
                     {(item.role_names || []).map((name) => (
                       <Badge key={name} variant="secondary">{name}</Badge>
                     ))}
-                    {item.email_sent ? <Badge>Emailed</Badge> : null}
                   </div>
                 </div>
                 <CardDescription>
                   {item.created_by_name || 'Master Admin'}
                   {item.created_at ? ` · ${formatWhen(item.created_at)}` : ''}
-                  {item.email_sent && item.recipient_count ? ` · ${item.recipient_count} emailed` : ''}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -173,7 +163,7 @@ export default function Announcements() {
             <DialogHeader>
               <DialogTitle>Send announcement</DialogTitle>
               <DialogDescription>
-                The message is saved in the app and emailed to every user in the selected roles.
+                The message is saved in the app for every user in the selected roles.
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4 space-y-3">
@@ -197,7 +187,7 @@ export default function Announcements() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Email these roles</Label>
+                <Label>Show to these roles</Label>
                 <div className="space-y-2 rounded-lg bg-muted/40 p-3">
                   {roles.map((role) => (
                     <label key={role.id} className="flex items-center gap-2 text-sm">
@@ -214,7 +204,7 @@ export default function Announcements() {
             <DialogFooter className="mt-5">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={saving || !form.role_ids.length}>
-                <Send /> {saving ? 'Sending…' : 'Post and email'}
+                <Send /> {saving ? 'Posting…' : 'Post announcement'}
               </Button>
             </DialogFooter>
           </form>

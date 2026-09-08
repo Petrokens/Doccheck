@@ -47,9 +47,19 @@ function validateRuntimeEnv() {
     if (process.env.AUTH_ALLOW_PUBLIC_REGISTER === 'true') {
       throw new Error('AUTH_ALLOW_PUBLIC_REGISTER must not be enabled in production.');
     }
+    if (!String(process.env.SMTP_HOST || '').trim()
+      || !String(process.env.SMTP_USER || '').trim()
+      || !String(process.env.SMTP_PASS || '').trim()) {
+      throw new Error('SMTP_HOST, SMTP_USER, and SMTP_PASS are required in production.');
+    }
   } else {
     if (weakAccess || weakRefresh) {
       console.warn('[security] JWT secrets are weak. Generate 32+ character random values before any external test.');
+    }
+    if (!String(process.env.SMTP_HOST || '').trim()
+      || !String(process.env.SMTP_USER || '').trim()
+      || !String(process.env.SMTP_PASS || '').trim()) {
+      console.warn('[email] SMTP_HOST / SMTP_USER / SMTP_PASS are not set. Login OTP, credentials, and reset emails will not send.');
     }
   }
 }

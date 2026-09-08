@@ -49,7 +49,7 @@ async function createAndSendLoginOtp(user) {
     const sent = await sendEmail({ to: user.email, ...mail });
     if (sent.skipped) {
       await otpRepo.consume(challengeId);
-      const error = new Error('Email service is not configured. Set RESEND_API_KEY.');
+      const error = new Error('Email service is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS.');
       error.statusCode = 503;
       throw error;
     }

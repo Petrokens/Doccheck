@@ -1,10 +1,10 @@
-const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
 
+let transporter;
+
 function fromAddress() {
-  return String(process.env.RESEND_FROM || 'Petrolenz QA/QC <noreply@petrolenz.com>')
-    .trim()
-    .replace(/\s+/g, ' ');
+  const from = String(process.env.SMTP_FROM || process.env.SMTP_USER || '').trim();
+  return from || 'Petrolenz QA/QC <noreply@localhost>';
 }
 
 function asList(to) {
@@ -13,58 +13,56 @@ function asList(to) {
     .filter(Boolean);
 }
 
-async function sendWithResend({ to, subject, html, text }) {
-  const key = String(process.env.RESEND_API_KEY || '').trim();
-  if (!key) return null;
-  const resend = new Resend(key);
-  const { data, error } = await resend.emails.send({
-    from: fromAddress(),
-    to,
-    subject,
-    html,
-    text,
-  });
-  if (error) {
-    const message = error.message || (typeof error === 'string' ? error : 'Resend send failed');
-    throw new Error(message);
-  }
-  return { skipped: false, provider: 'resend', id: data?.id || null };
+function smtpConfigured() {
+  return Boolean(
+    String(process.env.SMTP_HOST || '').trim()
+    && String(process.env.SMTP_USER || '').trim()
+    && String(process.env.SMTP_PASS || '').trim(),
+  );
 }
 
-async function sendWithGmail({ to, subject, html, text }) {
-  const user = String(process.env.EMAIL_USER || '').trim();
-  const pass = String(process.env.EMAIL_PASS || '').trim();
-  if (!user || !pass) return null;
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass },
+function getTransporter() {
+  if (!smtpConfigured()) return null;
+  if (transporter) return transporter;
+
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secureEnv = String(process.env.SMTP_SECURE || '').trim().toLowerCase();
+  const secure = secureEnv === 'true' || secureEnv === '1' || port === 465;
+
+  transporter = nodemailer.createTransport({
+    host: String(process.env.SMTP_HOST).trim(),
+    port,
+    secure,
+    auth: {
+      user: String(process.env.SMTP_USER).trim(),
+      pass: String(process.env.SMTP_PASS).trim(),
+    },
   });
-  await transporter.sendMail({
-    from: fromAddress(),
-    to,
-    subject,
-    html,
-    text,
-  });
-  return { skipped: false, provider: 'gmail' };
+  return transporter;
 }
 
 async function sendEmail({ to, subject, html, text }) {
   const recipients = asList(to);
   if (!recipients.length) return { skipped: true, reason: 'no-recipient' };
 
-  const resendResult = await sendWithResend({ to: recipients, subject, html, text });
-  if (resendResult) return resendResult;
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.warn('Email skipped: set SMTP_HOST, SMTP_USER, and SMTP_PASS in server/.env');
+    return { skipped: true, reason: 'not-configured' };
+  }
 
-  const gmailResult = await sendWithGmail({ to: recipients.join(', '), subject, html, text });
-  if (gmailResult) return gmailResult;
-
-  console.warn('Email skipped: set RESEND_API_KEY (recommended) or EMAIL_USER / EMAIL_PASS');
-  return { skipped: true, reason: 'not-configured' };
+  const info = await mailer.sendMail({
+    from: fromAddress(),
+    to: recipients.join(', '),
+    subject,
+    html,
+    text,
+  });
+  return { skipped: false, provider: 'smtp', id: info?.messageId || null };
 }
 
 function frontendOrigin() {
-  return String(process.env.FRONTEND_URL || 'http://localhost:5174')
+  return String(process.env.FRONTEND_URL || 'http://localhost:5173')
     .split(',')[0]
     .trim()
     .replace(/\/$/, '');

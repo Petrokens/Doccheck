@@ -572,7 +572,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
         post: {
           tags: ['Announcements'],
           summary: 'Create announcement and email selected roles',
-          description: 'Master-only. Saves the notice and emails every user in the selected roles via Resend.',
+          description: 'Master-only. Saves the notice for users in the selected roles.',
           operationId: 'createAnnouncement',
           security: bearer,
           parameters: trustedOriginParams,

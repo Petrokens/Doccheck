@@ -9,8 +9,8 @@ This is a new project (frontend, backend, APIs, database). It does not include T
 - **Client:** React 19, Vite, Tailwind CSS 4, React Router
 - **Desktop:** Electron wrapper around the web app
 - **Server:** Node.js, Express, PostgreSQL
-- **Email:** [Resend](https://resend.com) (login credentials, OTP, announcements)
 - **AI:** OpenAI (primary) with Groq fallback
+- **Email:** SMTP only (OTP, credentials, password reset)
 - **OCR:** pdf-parse, mammoth, Tesseract
 
 ## Run locally
@@ -24,7 +24,7 @@ psql -U postgres -d petrolenz_qaqc -f server/sql/schema.sql
 # 2. Server
 cd server
 copy .env.example .env
-# edit DATABASE_URL, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, OPENAI_API_KEY, RESEND_API_KEY
+# edit DATABASE_URL, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, OPENAI_API_KEY, SMTP_*
 npm install
 npm run dev
 
@@ -38,7 +38,7 @@ Open http://localhost:5174 (or the port Vite prints).
 
 Default master user is created on first server start (`MASTER_EMAIL` / `MASTER_PASSWORD` in `.env`).
 
-Login uses password plus a one-time email code. Creating a user from Master Admin emails that person their login credentials (requires `RESEND_API_KEY`). Announcements in the sidebar can be emailed to selected roles.
+Login uses email, password, and a one-time code emailed via **SMTP**. Set `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` in `server/.env`.
 
 ### Desktop (Electron)
 
@@ -52,11 +52,20 @@ npm start
 
 The window loads `http://localhost:5174`. Override with `ELECTRON_START_URL` if needed.
 
-## Email (Resend)
+## Email (SMTP only)
 
-1. Create an API key at [resend.com](https://resend.com)
-2. Set `RESEND_API_KEY` in `server/.env`
-3. For production, verify a domain and set `RESEND_FROM` (for example `Petrolenz QA/QC <noreply@yourdomain.com>`). The default `onboarding@resend.dev` sender only delivers to the Resend account email.
+Configure these in `server/.env`:
+
+```
+SMTP_HOST=smtp.yourprovider.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your@email.com
+SMTP_PASS=your-app-password
+SMTP_FROM=Petrolenz QA/QC <noreply@yourdomain.com>
+```
+
+Use port `465` with `SMTP_SECURE=true` if your provider requires SSL. Resend and other API mail providers are not used.
 
 ## Security
 
@@ -77,7 +86,7 @@ Interactive docs: **Swagger UI** at `http://localhost:5000/api/docs` (OpenAPI JS
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/api/auth/login` | Password step — emails OTP |
+| POST | `/api/auth/login` | Password step — emails OTP via SMTP |
 | POST | `/api/auth/login/verify-otp` | Complete login with email code |
 | POST | `/api/auth/login/resend-otp` | Resend login OTP |
 | POST | `/api/auth/refresh` | Refresh cookie |
