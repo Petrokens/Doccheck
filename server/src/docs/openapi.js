@@ -54,6 +54,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
       { name: 'Roles', description: 'Master-only role administration' },
       { name: 'Permissions', description: 'Master-only permission catalog' },
       { name: 'System', description: 'Runtime logs and health' },
+      { name: 'Announcements', description: 'Role-based notices and email' },
     ],
     paths: {
       '/api/health': {
@@ -113,7 +114,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           tags: ['Auth'],
           summary: 'Login',
           description:
-            'Returns an access JWT and sets a rotated httpOnly refresh cookie. Five failed attempts lock the account for 15 minutes (`423`). Rate limit: 8 / 15 min / IP.',
+            'Validates email and password, then emails a 6-digit OTP. The session is issued only after `POST /api/auth/login/verify-otp`. Five failed password attempts lock the account for 15 minutes (`423`). Rate limit: 8 / 15 min / IP.',
           operationId: 'login',
           security: [],
           parameters: trustedOriginParams,
@@ -122,6 +123,49 @@ function buildOpenApiSpec({ serverUrl } = {}) {
             ...jsonContent(
               { $ref: '#/components/schemas/LoginRequest' },
               { email: 'admin@petrolenz.com', password: 'your-password' },
+            ),
+          },
+          responses: {
+            200: {
+              description: 'OTP sent. Complete login with `/api/auth/login/verify-otp`.',
+              ...jsonContent(
+                { $ref: '#/components/schemas/LoginOtpChallengeResponse' },
+                {
+                  requiresOtp: true,
+                  challengeId: '3f1c8a2e-4b9d-4f11-9c0a-1d2e3f4a5b6c',
+                  emailMasked: 'a***@petrolenz.com',
+                  message: 'Enter the verification code sent to your email.',
+                },
+              ),
+            },
+            400: errorResponse('Missing credentials', 'Email and password are required.'),
+            401: errorResponse('Invalid credentials', 'Invalid email or password.'),
+            423: errorResponse('Account locked', 'Account temporarily locked. Try again later.'),
+            429: errorResponse('Rate limited', 'Too many login attempts. Try again after 15 minutes.'),
+          },
+        },
+      },
+
+      '/api/auth/login/verify-otp': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Verify login OTP',
+          description: 'Completes login after `/api/auth/login`. Returns an access JWT and sets a rotated httpOnly refresh cookie.',
+          operationId: 'verifyLoginOtp',
+          security: [],
+          parameters: trustedOriginParams,
+          requestBody: {
+            required: true,
+            ...jsonContent(
+              {
+                type: 'object',
+                required: ['challengeId', 'otp'],
+                properties: {
+                  challengeId: { type: 'string', format: 'uuid' },
+                  otp: { type: 'string', example: '123456' },
+                },
+              },
+              { challengeId: '3f1c8a2e-4b9d-4f11-9c0a-1d2e3f4a5b6c', otp: '123456' },
             ),
           },
           responses: {
@@ -138,10 +182,37 @@ function buildOpenApiSpec({ serverUrl } = {}) {
                 { message: 'Login successful', accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
               ),
             },
-            400: errorResponse('Missing credentials', 'Email and password are required.'),
-            401: errorResponse('Invalid credentials', 'Invalid email or password.'),
-            423: errorResponse('Account locked', 'Account temporarily locked. Try again later.'),
-            429: errorResponse('Rate limited', 'Too many login attempts. Try again after 15 minutes.'),
+            400: errorResponse('Invalid or expired code', 'Invalid or expired verification code. Sign in again.'),
+            401: errorResponse('Wrong code', 'Invalid verification code.'),
+            429: errorResponse('Rate limited', 'Too many verification attempts. Try again later.'),
+          },
+        },
+      },
+
+      '/api/auth/login/resend-otp': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Resend login OTP',
+          operationId: 'resendLoginOtp',
+          security: [],
+          parameters: trustedOriginParams,
+          requestBody: {
+            required: true,
+            ...jsonContent(
+              {
+                type: 'object',
+                required: ['challengeId'],
+                properties: { challengeId: { type: 'string', format: 'uuid' } },
+              },
+              { challengeId: '3f1c8a2e-4b9d-4f11-9c0a-1d2e3f4a5b6c' },
+            ),
+          },
+          responses: {
+            200: {
+              description: 'New OTP emailed',
+              ...jsonContent({ $ref: '#/components/schemas/LoginOtpChallengeResponse' }),
+            },
+            400: errorResponse('Session expired', 'Verification session expired. Sign in again.'),
           },
         },
       },
@@ -477,6 +548,54 @@ function buildOpenApiSpec({ serverUrl } = {}) {
         },
       },
 
+      '/api/announcements': {
+        get: {
+          tags: ['Announcements'],
+          summary: 'List announcements',
+          description: 'Returns notices for the caller’s role. Master sees all.',
+          operationId: 'listAnnouncements',
+          security: bearer,
+          responses: {
+            200: {
+              description: 'Announcements for this user',
+              ...jsonContent({
+                type: 'object',
+                properties: {
+                  can_compose: { type: 'boolean' },
+                  announcements: { type: 'array', items: { type: 'object' } },
+                },
+              }),
+            },
+            ...authErrors,
+          },
+        },
+        post: {
+          tags: ['Announcements'],
+          summary: 'Create announcement and email selected roles',
+          description: 'Master-only. Saves the notice and emails every user in the selected roles via Resend.',
+          operationId: 'createAnnouncement',
+          security: bearer,
+          parameters: trustedOriginParams,
+          requestBody: {
+            required: true,
+            ...jsonContent({
+              type: 'object',
+              required: ['title', 'body', 'role_ids'],
+              properties: {
+                title: { type: 'string' },
+                body: { type: 'string' },
+                role_ids: { type: 'array', items: { type: 'integer' } },
+              },
+            }),
+          },
+          responses: {
+            201: { description: 'Announcement created' },
+            400: errorResponse('Validation failed', 'Title and message are required.'),
+            ...authErrors,
+          },
+        },
+      },
+
       '/api/users': {
         get: {
           tags: ['Users'],
@@ -791,6 +910,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           type: 'object',
           properties: {
             message: { type: 'string' },
+            email_sent: { type: 'boolean' },
             user: { $ref: '#/components/schemas/User' },
           },
         },
@@ -800,6 +920,15 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           properties: {
             email: { type: 'string', format: 'email' },
             password: { type: 'string' },
+          },
+        },
+        LoginOtpChallengeResponse: {
+          type: 'object',
+          properties: {
+            requiresOtp: { type: 'boolean' },
+            challengeId: { type: 'string', format: 'uuid' },
+            emailMasked: { type: 'string' },
+            message: { type: 'string' },
           },
         },
         LoginResponse: {

@@ -13,3 +13,4 @@ export const MAIN_ENV_SETTINGS = `${DASHBOARD_HUB}/env-settings`;
 export const MAIN_AUDIT_REPORTS = `${DASHBOARD_HUB}/audit-reports`;
 export const MAIN_SYSTEM_LOGS = `${DASHBOARD_HUB}/system-logs`;
 export const MAIN_API_DOCS = `${DASHBOARD_HUB}/api-docs`;
+export const MAIN_ANNOUNCEMENTS = `${DASHBOARD_HUB}/announcements`;

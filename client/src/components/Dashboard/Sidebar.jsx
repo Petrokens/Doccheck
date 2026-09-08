@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   Activity, BookOpen, Building, Clock, Cog, Cpu, FileSearch, FileText, Flame,
-  Info, Key, Layers, Lock, RadioTower, Route, Shield,
+  Info, Key, Layers, Lock, Megaphone, RadioTower, Route, Shield,
   Thermometer, Users, Wrench, Zap,
 } from 'lucide-react';
 
@@ -16,7 +16,7 @@ const iconMap = {
   zap: Zap, thermometer: Thermometer, activity: Activity, radiotower: RadioTower,
   shield: Shield, layers: Layers, clock: Clock, info: Info, brain: Cpu,
   filetext: FileText, users: Users, key: Key, lock: Lock,
-  filesearch: FileSearch, filecode: FileText, bookopen: BookOpen,
+  filesearch: FileSearch, filecode: FileText, bookopen: BookOpen, megaphone: Megaphone,
 };
 
 export default function Sidebar() {

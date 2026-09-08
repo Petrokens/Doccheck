@@ -1,5 +1,7 @@
 const MASTER_ROLE = 1;
 
+const ANNOUNCEMENTS_ITEM_ID = 29;
+
 const MASTER_ONLY_PATHS = new Set([
   '/dashboard/users',
   '/dashboard/roles',
@@ -71,6 +73,7 @@ function toCatalog(sections) {
 
 module.exports = {
   MASTER_ROLE,
+  ANNOUNCEMENTS_ITEM_ID,
   MASTER_ONLY_PATHS,
   isAdminPath,
   isMasterRole,

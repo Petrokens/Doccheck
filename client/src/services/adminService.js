@@ -15,10 +15,12 @@ export async function createUser({ username, email, password, role_id }) {
     role_id: registerRole,
   });
   const user = data.user;
+  const emailSent = Boolean(data.email_sent);
   if (user?.user_id && requested !== registerRole) {
-    return updateUser(user.user_id, { role_id: requested });
+    const updated = await updateUser(user.user_id, { role_id: requested });
+    return { ...updated, email_sent: emailSent };
   }
-  return user;
+  return { ...user, email_sent: emailSent };
 }
 
 export async function updateUser(userId, payload) {

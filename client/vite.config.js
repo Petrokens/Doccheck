@@ -32,6 +32,14 @@ function securityHeaders() {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), securityHeaders()],
+  server: {
+    port: 5174,
+    strictPort: true,
+  },
+  preview: {
+    port: 5174,
+    strictPort: true,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

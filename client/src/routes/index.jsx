@@ -15,6 +15,7 @@ import SystemStatus from '@/pages/dashboard/SystemStatus';
 import ApiDocs from '@/pages/dashboard/ApiDocs';
 import AuditReports from '@/pages/dashboard/AuditReports';
 import SystemLogs from '@/pages/dashboard/SystemLogs';
+import Announcements from '@/pages/dashboard/Announcements';
 import {
   AccessControl,
   AuditLog,
@@ -64,6 +65,7 @@ function AppRoutesInner() {
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
         <Route path="info" element={<Info />} />
+        <Route path="announcements" element={<Announcements />} />
         <Route path="system-status" element={<SystemStatus />} />
         <Route path="env-settings" element={<RoleProtectedRoute><EnvSettings /></RoleProtectedRoute>} />
         <Route path="users" element={<RoleProtectedRoute><UserManagement /></RoleProtectedRoute>} />

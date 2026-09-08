@@ -96,6 +96,19 @@ async function findByRoleId(roleId) {
   return rows.map(mapUser);
 }
 
+async function findByRoleIds(roleIds) {
+  const ids = [...new Set((roleIds || []).map(Number).filter((id) => Number.isInteger(id) && id > 0))];
+  if (!ids.length) return [];
+  const { rows } = await pool.query(
+    `SELECT user_id, username, email, role_id
+     FROM users
+     WHERE role_id = ANY($1::int[])
+     ORDER BY email ASC`,
+    [ids],
+  );
+  return rows;
+}
+
 async function findAllSorted() {
   const { rows } = await pool.query(
     `SELECT id, user_id, username, email, role_id, last_login_at, created_at
@@ -151,6 +164,7 @@ module.exports = {
   clearRefreshTokenByUserId,
   countByRole,
   findByRoleId,
+  findByRoleIds,
   findAllSorted,
   updateByUserId,
   deleteByUserId,

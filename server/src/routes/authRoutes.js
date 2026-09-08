@@ -4,7 +4,7 @@ const auth = require('../controllers/authController');
 const verifyToken = require('../middleware/verifyToken');
 const requireRole = require('../middleware/requireRole');
 const requireTrustedOrigin = require('../middleware/requireTrustedOrigin');
-const { loginLimiter, passwordLimiter, refreshLimiter } = require('../middleware/rateLimits');
+const { loginLimiter, passwordLimiter, refreshLimiter, otpLimiter } = require('../middleware/rateLimits');
 
 router.use(requireTrustedOrigin);
 
@@ -15,6 +15,8 @@ if (process.env.AUTH_ALLOW_PUBLIC_REGISTER === 'true') {
 }
 
 router.post('/login', loginLimiter, auth.login);
+router.post('/login/verify-otp', otpLimiter, auth.verifyLoginOtp);
+router.post('/login/resend-otp', otpLimiter, auth.resendLoginOtp);
 router.post('/logout', auth.logout);
 router.post('/refresh', refreshLimiter, auth.refresh);
 router.post('/forgot-password', passwordLimiter, auth.forgotPassword);

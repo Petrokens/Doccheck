@@ -105,6 +105,39 @@ CREATE INDEX IF NOT EXISTS idx_process_reports_workflow ON process_reports (work
 CREATE INDEX IF NOT EXISTS idx_process_reports_checked_by ON process_reports (checked_by_user_id);
 CREATE INDEX IF NOT EXISTS idx_process_reports_created_at ON process_reports (created_at DESC);
 
+CREATE TABLE IF NOT EXISTS login_otp_challenges (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  otp_hash     TEXT NOT NULL,
+  expires_at   TIMESTAMPTZ NOT NULL,
+  attempts     INTEGER NOT NULL DEFAULT 0,
+  consumed_at  TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_otp_user ON login_otp_challenges (user_id);
+CREATE INDEX IF NOT EXISTS idx_login_otp_expires ON login_otp_challenges (expires_at);
+
+CREATE TABLE IF NOT EXISTS announcements (
+  id               SERIAL PRIMARY KEY,
+  title            VARCHAR(255) NOT NULL,
+  body             TEXT NOT NULL,
+  created_by       UUID REFERENCES users(user_id) ON DELETE SET NULL,
+  email_sent       BOOLEAN NOT NULL DEFAULT FALSE,
+  email_sent_at    TIMESTAMPTZ,
+  recipient_count  INTEGER NOT NULL DEFAULT 0,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS announcement_roles (
+  announcement_id INTEGER NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+  role_id         INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  PRIMARY KEY (announcement_id, role_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_announcement_roles_role ON announcement_roles (role_id);
+
 INSERT INTO roles (id, name) VALUES (1, 'Master'), (2, 'Engineer')
 ON CONFLICT (id) DO NOTHING;
 

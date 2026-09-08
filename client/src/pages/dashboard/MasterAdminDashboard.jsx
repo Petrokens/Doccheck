@@ -109,10 +109,15 @@ export function UserManagement() {
     event.preventDefault();
     setSaving(true);
     try {
-      await createUser(form);
+      const created = await createUser(form);
+      const emailedTo = form.email.trim();
       setForm(EMPTY_USER_FORM);
       setFormOpen(false);
-      toast.success('User created');
+      toast.success(
+        created?.email_sent
+          ? `User created. Login credentials emailed to ${emailedTo}`
+          : 'User created. Credentials email was skipped — set RESEND_API_KEY.',
+      );
       load();
     } catch (err) {
       toast.error(publicApiError(err, 'Could not create user'));
@@ -253,7 +258,9 @@ export function UserManagement() {
           <form onSubmit={submitUser}>
             <DialogHeader>
               <DialogTitle>Add user</DialogTitle>
-              <DialogDescription>Password must be 12+ characters with upper, lower, number, and symbol.</DialogDescription>
+              <DialogDescription>
+                Login credentials are emailed to this address. Password must be 12+ characters with upper, lower, number, and symbol.
+              </DialogDescription>
             </DialogHeader>
             <div className="mt-4 space-y-3">
               <div className="space-y-1.5">

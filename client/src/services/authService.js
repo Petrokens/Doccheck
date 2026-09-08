@@ -5,7 +5,21 @@ export const loginUser = async (credentials) => {
     email: String(credentials.email || '').trim(),
     password: credentials.password,
   });
+  if (response.data.accessToken) setAccessToken(response.data.accessToken);
+  return response.data;
+};
+
+export const verifyLoginOtp = async ({ challengeId, otp }) => {
+  const response = await api.post('/auth/login/verify-otp', {
+    challengeId,
+    otp: String(otp || '').trim(),
+  });
   setAccessToken(response.data.accessToken);
+  return response.data;
+};
+
+export const resendLoginOtp = async ({ challengeId }) => {
+  const response = await api.post('/auth/login/resend-otp', { challengeId });
   return response.data;
 };
 
