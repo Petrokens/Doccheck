@@ -6,6 +6,7 @@ const processReportRepo = require('../db/repositories/processReportRepository');
 const userRepo = require('../db/repositories/userRepository');
 const { mapWithConcurrency } = require('../utils/asyncPool');
 const { sanitizeMarkdown, isReportId, canAccessReport } = require('../security/reportAccess');
+const { countDocuments } = require('../security/tokenUsage');
 const { publicError, internalError } = require('../security/httpErrors');
 const { audit } = require('../security/audit');
 
@@ -118,8 +119,9 @@ async function buildProcessReport({
   }, 5000);
 
   let aiMarkdown = '';
+  let usage = {};
   try {
-    aiMarkdown = await generateProcessQcReport({
+    const generated = await generateProcessQcReport({
       documentType: documentType || 'Engineering Document',
       mainDocumentName: mainDocumentLabel,
       supportDocumentName: supportDocumentNameJoined,
@@ -127,6 +129,8 @@ async function buildProcessReport({
       supportText,
       onProgress: emit,
     });
+    aiMarkdown = generated?.markdown || generated || '';
+    usage = generated?.usage || {};
   } finally {
     clearInterval(timer);
   }
@@ -166,6 +170,12 @@ async function buildProcessReport({
     report_structured: null,
     workflow: 'qaqc',
     report_title: `${reportCategory} QA/QC Report`,
+    prompt_tokens: Number(usage.prompt_tokens || 0),
+    completion_tokens: Number(usage.completion_tokens || 0),
+    total_tokens: Number(usage.total_tokens || 0),
+    token_cost_usd: Number(usage.token_cost_usd || 0),
+    ai_provider: usage.provider || '',
+    ai_model: usage.model || '',
     created_at: generatedAtIso,
   };
   memoryCache.set(id, record);
@@ -194,6 +204,13 @@ function mapHistoryRows(rows, userMap) {
     status: 'Completed',
     score: extractScoreFromMarkdown(item.report_markdown),
     workflow: 'qaqc',
+    document_count: countDocuments(item.main_document_name, item.support_document_name),
+    prompt_tokens: Number(item.prompt_tokens || 0),
+    completion_tokens: Number(item.completion_tokens || 0),
+    total_tokens: Number(item.total_tokens || 0),
+    token_cost_usd: Number(item.token_cost_usd || 0),
+    ai_model: item.ai_model || '',
+    ai_provider: item.ai_provider || '',
   }));
 }
 
@@ -285,8 +302,39 @@ exports.getProcessReportById = async (req, res) => {
 
 exports.getReportDashboardStats = async (req, res) => {
   try {
-    const qaqcTotal = await processReportRepo.countWithFilter(ownerFilterForRequest(req));
-    return res.json({ qaqcTotal });
+    const ownerFilter = ownerFilterForRequest(req);
+    const [usage, grouped] = await Promise.all([
+      processReportRepo.usageSummary(ownerFilter),
+      processReportRepo.usageByUser(ownerFilter),
+    ]);
+    const userIds = grouped
+      .map((item) => item.user_id)
+      .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+    const users = userIds.length ? await userRepo.findByUserIds(userIds) : [];
+    const userMap = new Map(users.map((user) => [user.user_id, user]));
+    const byUser = grouped.map((item) => {
+      const user = userMap.get(item.user_id);
+      return {
+        user_id: item.user_id,
+        username: user?.username || 'Unknown',
+        email: user?.email || '',
+        reports: Number(item.reports || 0),
+        documents: Number(item.documents || 0),
+        prompt_tokens: Number(item.prompt_tokens || 0),
+        completion_tokens: Number(item.completion_tokens || 0),
+        total_tokens: Number(item.total_tokens || 0),
+        token_cost_usd: Number(item.token_cost_usd || 0),
+      };
+    });
+    return res.json({
+      qaqcTotal: Number(usage.reports || 0),
+      documents: Number(usage.documents || 0),
+      prompt_tokens: Number(usage.prompt_tokens || 0),
+      completion_tokens: Number(usage.completion_tokens || 0),
+      total_tokens: Number(usage.total_tokens || 0),
+      token_cost_usd: Number(usage.token_cost_usd || 0),
+      byUser,
+    });
   } catch (error) {
     return internalError(res, error, 'Failed to fetch report counts.');
   }

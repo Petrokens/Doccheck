@@ -22,6 +22,7 @@ import {
   RoleManagement,
   UserManagement,
 } from '@/pages/dashboard/adminPages';
+import { DashboardHome } from '@/context/SidebarAccessContext';
 
 function AppRoutesInner() {
   return (
@@ -37,9 +38,9 @@ function AppRoutesInner() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="qa-qc/process" replace />} />
+        <Route index element={<DashboardHome />} />
         <Route path="qa-qc">
-          <Route index element={<Navigate to="process" replace />} />
+          <Route index element={<DashboardHome />} />
           <Route path="process" element={<DisciplineWorkspace department="process" />} />
           <Route path="piping" element={<DisciplineWorkspace department="piping" />} />
           <Route path="pipeline" element={<DisciplineWorkspace department="pipeline" />} />
@@ -57,7 +58,7 @@ function AppRoutesInner() {
           <Route path="general-discipline" element={<DisciplineWorkspace department="general" />} />
           <Route path="history" element={<History />} />
           <Route path="ai-review" element={<AIReview />} />
-          <Route path="templates" element={<Navigate to="/dashboard/qa-qc/process" replace />} />
+          <Route path="templates" element={<Navigate to="/dashboard" replace />} />
           <Route path="user-activity" element={<AuditLog />} />
         </Route>
         <Route path="profile" element={<Profile />} />

@@ -13,10 +13,13 @@ users.delete('/:userId', requireTrustedOrigin, admin.deleteUser);
 const roles = express.Router();
 roles.use(verifyToken, requireRole([1]));
 roles.get('/', admin.listRoles);
+roles.get('/sidebar-catalog', admin.listSidebarCatalog);
 roles.post('/', requireTrustedOrigin, admin.createRole);
 roles.patch('/:id', requireTrustedOrigin, admin.updateRole);
 roles.get('/:id/permissions', admin.getRolePermissions);
 roles.put('/:id/permissions', requireTrustedOrigin, admin.setRolePermissions);
+roles.get('/:id/sidebar', admin.getRoleSidebar);
+roles.put('/:id/sidebar', requireTrustedOrigin, admin.setRoleSidebar);
 
 const permissions = express.Router();
 permissions.use(verifyToken, requireRole([1]));

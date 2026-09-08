@@ -1,6 +1,7 @@
 const { getOpenAIClient, getOpenAIModel } = require('../config/openai');
 const { getGroqClient, getGroqModel } = require('../config/groq');
 const { generateDummyQaQcReport } = require('./dummyReportService');
+const { emptyUsage, usageFromResponse } = require('../security/tokenUsage');
 
 const QAQC_MASTER_PROMPT = `
 PETROLENS QA/QC REPORT ENGINE
@@ -75,7 +76,11 @@ async function completeReport({ input, onProgress, reportContext }) {
       const markdown = extractTextFromResponse(response);
       if (markdown) {
         emit(`AI engine response received (OpenAI / ${openaiModel}).`);
-        return { markdown, provider: 'openai' };
+        return {
+          markdown,
+          provider: 'openai',
+          usage: usageFromResponse(response, { provider: 'openai', model: openaiModel }),
+        };
       }
       lastError = 'OpenAI returned an empty response.';
     } catch (error) {
@@ -100,7 +105,11 @@ async function completeReport({ input, onProgress, reportContext }) {
       const markdown = String(response?.choices?.[0]?.message?.content || '').trim();
       if (markdown) {
         emit(`AI engine response received (Groq / ${groqModel}).`);
-        return { markdown, provider: 'groq' };
+        return {
+          markdown,
+          provider: 'groq',
+          usage: usageFromResponse(response, { provider: 'groq', model: groqModel }),
+        };
       }
     } catch (error) {
       lastError = String(error?.message || error);
@@ -113,6 +122,7 @@ async function completeReport({ input, onProgress, reportContext }) {
     return {
       markdown: generateDummyQaQcReport(reportContext || {}),
       provider: 'demo',
+      usage: emptyUsage('demo', 'demo'),
     };
   }
 
@@ -144,7 +154,7 @@ ${clip(supportText) || 'Not provided'}
 END_UNTRUSTED_DOCUMENT
 `.trim();
 
-  const { markdown, provider } = await completeReport({
+  const { markdown, provider, usage } = await completeReport({
     input,
     onProgress,
     reportContext: { documentType, mainDocumentName, supportDocumentName, mainText },
@@ -152,7 +162,10 @@ END_UNTRUSTED_DOCUMENT
   if (typeof onProgress === 'function' && provider) {
     onProgress(`Report engine provider: ${provider}`);
   }
-  return markdown;
+  if (typeof onProgress === 'function' && usage?.total_tokens) {
+    onProgress(`Tokens used: ${usage.total_tokens.toLocaleString()} (est. $${Number(usage.token_cost_usd || 0).toFixed(4)})`);
+  }
+  return { markdown, usage: usage || emptyUsage(provider, '') };
 }
 
 module.exports = { QAQC_MASTER_PROMPT, generateProcessQcReport, extractTextFromResponse };

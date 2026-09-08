@@ -44,7 +44,7 @@ export default function LoginForm() {
       else localStorage.removeItem(REMEMBER_EMAIL_KEY);
       await markLoggedIn(data.accessToken);
       toast.success('Login successful!');
-      navigate('/dashboard/qa-qc/process');
+      navigate('/dashboard');
     } catch (err) {
       toast.error(publicApiError(err, 'Login failed'));
     } finally {

@@ -1,63 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { KeyRound, Plus, RefreshCw, Save, Search, Shield, Trash2 } from 'lucide-react';
-import ConfirmDialog from '@/components/Common/ConfirmDialog';
-import { useSessionAuth } from '@/context/SessionAuthContext';
+import { KeyRound, Plus, Save, Shield } from 'lucide-react';
 import { MAIN_PERMISSIONS, MAIN_ROLES, MAIN_USERS } from '@/lib/dashboardPaths';
 import { publicApiError } from '@/lib/uploadSafety';
+import { useSessionAuth } from '@/context/SessionAuthContext';
+import { useSidebarAccess } from '@/context/SidebarAccessContext';
 import {
   createRole,
-  createUser,
-  deleteUser,
   getRolePermissions,
+  getRoleSidebar,
   listPermissions,
   listRoles,
+  listSidebarCatalog,
   listUsers,
   setRolePermissions,
+  setRoleSidebar,
   updateRole,
-  updateUser,
 } from '@/services/adminService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-function formatWhen(value) {
-  if (!value) return 'Never';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString();
-}
-
-function roleLabel(roles, id) {
-  return roles.find((role) => Number(role.id) === Number(id))?.name || `Role ${id}`;
-}
+export { UserManagement } from '@/pages/dashboard/MasterAdminDashboard';
 
 function AdminHeader({ eyebrow, title, body, actions }) {
   return (
@@ -72,243 +40,72 @@ function AdminHeader({ eyebrow, title, body, actions }) {
   );
 }
 
-const EMPTY_USER_FORM = { username: '', email: '', password: '', role_id: '2' };
+function visibleCatalog(catalog, roleId) {
+  const isMaster = Number(roleId) === 1;
+  return catalog
+    .map((section) => ({
+      ...section,
+      items: (section.items || []).filter((item) => isMaster || !item.admin),
+    }))
+    .filter((section) => section.items.length);
+}
 
-export function UserManagement() {
-  const { user: sessionUser } = useSessionAuth();
-  const [users, setUsers] = useState([]);
-  const [roles, setRoles] = useState([]);
-  const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [pendingId, setPendingId] = useState('');
-  const [deleting, setDeleting] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_USER_FORM);
-  const [saving, setSaving] = useState(false);
+function SidebarItemPicker({ catalog, roleId, selected, onChange }) {
+  const isMaster = Number(roleId) === 1;
+  const sections = visibleCatalog(catalog, roleId);
 
-  const load = () => {
-    setLoading(true);
-    Promise.all([listUsers(), listRoles()])
-      .then(([nextUsers, nextRoles]) => {
-        setUsers(nextUsers);
-        setRoles(nextRoles);
-      })
-      .catch((err) => toast.error(publicApiError(err, 'Unable to load users')))
-      .finally(() => setLoading(false));
+  const toggle = (item) => {
+    if (item.admin && isMaster) return;
+    const id = item.id;
+    onChange(selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id]);
   };
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return users;
-    return users.filter((item) =>
-      [item.username, item.email, roleLabel(roles, item.role_id)]
-        .join(' ')
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [users, roles, query]);
-
-  const stats = useMemo(() => ({
-    total: users.length,
-    masters: users.filter((item) => Number(item.role_id) === 1).length,
-    active: users.filter((item) => item.last_login_at).length,
-  }), [users]);
-
-  const submitUser = async (event) => {
-    event.preventDefault();
-    setSaving(true);
-    try {
-      await createUser(form);
-      setForm(EMPTY_USER_FORM);
-      setFormOpen(false);
-      toast.success('User created');
-      load();
-    } catch (err) {
-      toast.error(publicApiError(err, 'Could not create user'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const changeRole = async (userId, roleId) => {
-    try {
-      const updated = await updateUser(userId, { role_id: Number(roleId) });
-      setUsers((prev) => prev.map((item) => (item.user_id === userId ? { ...item, ...updated } : item)));
-      toast.success('Role updated');
-    } catch (err) {
-      toast.error(publicApiError(err, 'Could not update role'));
-    }
+  const setSection = (items, on) => {
+    const ids = items.filter((item) => !(item.admin && isMaster)).map((item) => item.id);
+    if (on) onChange([...new Set([...selected, ...ids])]);
+    else onChange(selected.filter((id) => !ids.includes(id)));
   };
 
   return (
-    <div className="space-y-5 p-4 md:p-6">
-      <AdminHeader
-        eyebrow="Administration · Accounts"
-        title="User Management"
-        body="Create accounts, assign roles, and remove users. You cannot delete your own account or the last Master."
-        actions={(
-          <>
-            <Button type="button" variant="outline" size="sm" onClick={load}>
-              <RefreshCw /> Refresh
-            </Button>
-            <Button type="button" size="sm" onClick={() => setFormOpen(true)}>
-              <Plus /> Add user
-            </Button>
-          </>
-        )}
-      />
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          ['Accounts', stats.total],
-          ['Master users', stats.masters],
-          ['Have logged in', stats.active],
-        ].map(([label, value]) => (
-          <Card key={label} size="sm">
-            <CardHeader>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-              <CardTitle className="text-3xl">{loading ? '—' : value}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="overflow-hidden py-0">
-        <CardHeader className="border-b py-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, email, or role"
-              className="pl-8"
-            />
-          </div>
-        </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Last login</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Loading users…</TableCell></TableRow>
-            ) : filtered.length ? filtered.map((item) => {
-              const isSelf = item.user_id === sessionUser?.user_id;
-              return (
-                <TableRow key={item.user_id}>
-                  <TableCell>
-                    <p className="font-medium">{item.username}</p>
-                    <p className="text-xs text-muted-foreground">{item.email}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Select value={String(item.role_id)} onValueChange={(value) => changeRole(item.user_id, value)}>
-                      <SelectTrigger className="h-7 w-[140px]" size="sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.map((role) => (
-                          <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{formatWhen(item.last_login_at)}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatWhen(item.created_at)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isSelf}
-                      className="text-destructive"
-                      onClick={() => setPendingId(item.user_id)}
-                    >
-                      <Trash2 /> {isSelf ? 'You' : 'Delete'}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            }) : (
-              <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No users match this search.</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Card>
-
-      <Dialog open={formOpen} onOpenChange={(open) => { if (!saving) setFormOpen(open); }}>
-        <DialogContent>
-          <form onSubmit={submitUser}>
-            <DialogHeader>
-              <DialogTitle>Add user</DialogTitle>
-              <DialogDescription>Password must be 12+ characters with upper, lower, number, and symbol.</DialogDescription>
-            </DialogHeader>
-            <div className="mt-4 space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="user-name">Name</Label>
-                <Input id="user-name" required value={form.username} onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="user-email">Email</Label>
-                <Input id="user-email" required type="email" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="user-password">Password</Label>
-                <Input id="user-password" required type="password" value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="user-role">Role</Label>
-                <Select value={form.role_id} onValueChange={(value) => setForm((prev) => ({ ...prev, role_id: value }))}>
-                  <SelectTrigger id="user-role" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+    <div className="space-y-3">
+      {sections.map((section) => {
+        const unlocked = section.items.filter((item) => !(item.admin && isMaster));
+        const allOn = unlocked.every((item) => selected.includes(item.id));
+        return (
+          <div key={section.id} className="rounded-lg bg-muted/40 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{section.title}</p>
+              {unlocked.length ? (
+                <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setSection(section.items, !allOn)}>
+                  {allOn ? 'Clear' : 'All'}
+                </Button>
+              ) : null}
             </div>
-            <DialogFooter className="mt-5">
-              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Creating…' : 'Create'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        open={Boolean(pendingId)}
-        title="Delete user?"
-        message="This permanently removes the account. This cannot be undone."
-        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
-        loading={deleting}
-        onClose={() => !deleting && setPendingId('')}
-        onConfirm={async () => {
-          setDeleting(true);
-          try {
-            await deleteUser(pendingId);
-            setUsers((prev) => prev.filter((item) => item.user_id !== pendingId));
-            setPendingId('');
-            toast.success('User deleted');
-          } catch (err) {
-            toast.error(publicApiError(err, 'Delete failed'));
-          } finally {
-            setDeleting(false);
-          }
-        }}
-      />
+            <div className="space-y-2">
+              {section.items.map((item) => {
+                const locked = Boolean(item.admin && isMaster);
+                const checked = locked || selected.includes(item.id);
+                return (
+                  <label key={item.id} className="flex items-start gap-2 text-sm">
+                    <Checkbox
+                      checked={checked}
+                      disabled={locked}
+                      onCheckedChange={() => toggle(item)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium">{item.label}</span>
+                      {item.admin ? (
+                        <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Admin</span>
+                      ) : null}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -376,7 +173,7 @@ export function RoleManagement() {
       <AdminHeader
         eyebrow="Administration · Access"
         title="Role Management"
-        body="Roles group permissions. Assign people from User Management, then edit what each role can do in Access Control."
+        body="Roles group permissions. Assign people from Master Admin, then edit what each role can do in Access Control."
         actions={(
           <Button asChild size="sm">
             <Link to={MAIN_PERMISSIONS}>
@@ -440,21 +237,29 @@ export function RoleManagement() {
 }
 
 export function AccessControl() {
+  const { user: sessionUser } = useSessionAuth();
+  const { reload: reloadSidebar } = useSidebarAccess();
+  const [tab, setTab] = useState('sidebar');
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
+  const [catalog, setCatalog] = useState([]);
   const [roleId, setRoleId] = useState('');
   const [selected, setSelected] = useState([]);
+  const [menuIds, setMenuIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [accessSaving, setAccessSaving] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fromQuery = params.get('role');
-    Promise.all([listRoles(), listPermissions()])
-      .then(([nextRoles, nextPermissions]) => {
+    Promise.all([listRoles(), listPermissions(), listSidebarCatalog()])
+      .then(([nextRoles, nextPermissions, nextCatalog]) => {
         setRoles(nextRoles);
         setPermissions(nextPermissions);
+        setCatalog(nextCatalog);
         setRoleId(fromQuery || String(nextRoles[0]?.id || '1'));
+        if (fromQuery) setTab('permissions');
       })
       .catch((err) => toast.error(publicApiError(err, 'Unable to load access control')))
       .finally(() => setLoading(false));
@@ -463,7 +268,12 @@ export function AccessControl() {
   useEffect(() => {
     if (!roleId) return;
     getRolePermissions(roleId).then(setSelected).catch(() => setSelected([]));
+    getRoleSidebar(roleId)
+      .then((data) => setMenuIds(data.item_ids || []))
+      .catch(() => setMenuIds([]));
   }, [roleId]);
+
+  const selectedRole = roles.find((role) => String(role.id) === String(roleId));
 
   const grouped = useMemo(() => {
     const map = new Map();
@@ -487,12 +297,27 @@ export function AccessControl() {
     }
   };
 
+  const saveAccess = async () => {
+    if (!roleId) return;
+    setAccessSaving(true);
+    try {
+      const result = await setRoleSidebar(roleId, menuIds);
+      setMenuIds(result.item_ids || []);
+      toast.success(`Sidebar menus saved for ${selectedRole?.name || 'role'}`);
+      if (Number(sessionUser?.role_id) === Number(roleId)) await reloadSidebar();
+    } catch (err) {
+      toast.error(publicApiError(err, 'Could not save sidebar menus'));
+    } finally {
+      setAccessSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-5 p-4 md:p-6">
       <AdminHeader
         eyebrow="Administration · Access"
         title="Access Control"
-        body="Choose a role and grant catalog permissions. Master should keep user, role, and permission management."
+        body="Choose a role, then assign the sidebar menus and catalog permissions everyone in that role receives."
         actions={(
           <Button asChild variant="outline" size="sm">
             <Link to={MAIN_ROLES}>
@@ -516,50 +341,89 @@ export function AccessControl() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
-          <CardDescription>
-            {selected.length} of {permissions.length} permissions assigned
-          </CardDescription>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setSelected(permissions.map((item) => item.id))}>Select all</Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setSelected([])}>Clear</Button>
-            <Button type="button" size="sm" onClick={save} disabled={saving || loading}>
-              <Save /> {saving ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading permissions…</p>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {grouped.map(([group, items]) => (
-                <Card key={group} size="sm" className="bg-muted/40">
-                  <CardHeader>
-                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{group}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {items.map((item) => (
-                      <label key={item.id} className="flex items-start gap-2 text-sm">
-                        <Checkbox
-                          checked={selected.includes(item.id)}
-                          onCheckedChange={() => setSelected((prev) => (prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]))}
-                          className="mt-1"
-                        />
-                        <span>
-                          <span className="font-medium">{item.name}</span>
-                          <span className="block text-xs text-muted-foreground">{item.description || item.key}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="sidebar">Sidebar menus</TabsTrigger>
+          <TabsTrigger value="permissions">Role permissions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="sidebar" className="mt-4">
+          <Card>
+            <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle>{selectedRole?.name || 'Select a role'}</CardTitle>
+                <CardDescription>
+                  {Number(roleId) === 1
+                    ? 'Master always keeps Administration menus. Everyone with this role sees the same sidebar.'
+                    : 'Everyone with this role sees the same sidebar. Administration menus stay Master-only.'}
+                </CardDescription>
+              </div>
+              <Button type="button" size="sm" onClick={saveAccess} disabled={!roleId || accessSaving || loading}>
+                <Save /> {accessSaving ? 'Saving…' : 'Save menus'}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading menus…</p>
+              ) : roleId ? (
+                <SidebarItemPicker
+                  catalog={catalog}
+                  roleId={roleId}
+                  selected={menuIds}
+                  onChange={setMenuIds}
+                />
+              ) : null}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="permissions" className="mt-4">
+          <Card>
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
+              <CardDescription>
+                {selected.length} of {permissions.length} permissions assigned
+              </CardDescription>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setSelected(permissions.map((item) => item.id))}>Select all</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setSelected([])}>Clear</Button>
+                <Button type="button" size="sm" onClick={save} disabled={saving || loading}>
+                  <Save /> {saving ? 'Saving…' : 'Save'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading permissions…</p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {grouped.map(([group, items]) => (
+                    <Card key={group} size="sm" className="bg-muted/40">
+                      <CardHeader>
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{group}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {items.map((item) => (
+                          <label key={item.id} className="flex items-start gap-2 text-sm">
+                            <Checkbox
+                              checked={selected.includes(item.id)}
+                              onCheckedChange={() => setSelected((prev) => (prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]))}
+                              className="mt-1"
+                            />
+                            <span>
+                              <span className="font-medium">{item.name}</span>
+                              <span className="block text-xs text-muted-foreground">{item.description || item.key}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

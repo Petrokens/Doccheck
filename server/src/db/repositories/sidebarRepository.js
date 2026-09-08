@@ -42,13 +42,18 @@ async function deleteSectionsNotIn(ids) {
   await pool.query('DELETE FROM sidebar_sections WHERE NOT (id = ANY($1::int[]))', [ids]);
 }
 
+async function listRawItems() {
+  const { rows } = await pool.query(
+    'SELECT id, section_id, label, path, icon_name, display_order FROM sidebar_items ORDER BY display_order, id',
+  );
+  return rows;
+}
+
 async function listSectionsWithItems() {
   const { rows: sections } = await pool.query(
     'SELECT * FROM sidebar_sections ORDER BY display_order, id',
   );
-  const { rows: items } = await pool.query(
-    'SELECT * FROM sidebar_items ORDER BY display_order, id',
-  );
+  const items = await listRawItems();
   return sections.map((section) => ({
     id: section.id,
     title: section.name,
@@ -63,6 +68,39 @@ async function listSectionsWithItems() {
   }));
 }
 
+async function listRoleItemIds(roleId) {
+  if (!roleId) return [];
+  const { rows } = await pool.query(
+    'SELECT sidebar_item_id FROM role_sidebar_items WHERE role_id = $1 ORDER BY sidebar_item_id',
+    [roleId],
+  );
+  return rows.map((row) => Number(row.sidebar_item_id));
+}
+
+async function setRoleItemIds(roleId, ids) {
+  const itemIds = [...new Set((ids || []).map(Number).filter((id) => Number.isInteger(id) && id > 0))];
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM role_sidebar_items WHERE role_id = $1', [roleId]);
+    if (itemIds.length) {
+      await client.query(
+        `INSERT INTO role_sidebar_items (role_id, sidebar_item_id)
+         SELECT $1, x FROM unnest($2::int[]) AS x
+         ON CONFLICT DO NOTHING`,
+        [roleId, itemIds],
+      );
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  return listRoleItemIds(roleId);
+}
+
 module.exports = {
   upsertSection,
   upsertItem,
@@ -70,5 +108,8 @@ module.exports = {
   deleteItemsNotIn,
   deleteSection,
   deleteSectionsNotIn,
+  listRawItems,
   listSectionsWithItems,
+  listRoleItemIds,
+  setRoleItemIds,
 };

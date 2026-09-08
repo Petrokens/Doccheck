@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { getSidebarData } from '@/services/processReportService';
+import { useSidebarAccess } from '@/context/SidebarAccessContext';
 import { BRAND_EYEBROW, BRAND_TAGLINE } from '@/lib/brandCopy';
 import { buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,10 +20,7 @@ const iconMap = {
 };
 
 export default function Sidebar() {
-  const [sections, setSections] = useState([]);
-  useEffect(() => {
-    getSidebarData().then(setSections).catch(() => setSections([]));
-  }, []);
+  const { sections } = useSidebarAccess();
 
   return (
     <aside id="app-sidebar" className="flex h-full min-h-0 w-64 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">

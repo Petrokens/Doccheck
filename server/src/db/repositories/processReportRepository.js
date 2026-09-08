@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { countDocuments } = require('../../security/tokenUsage');
 
 const QA_QC_SQL_FILTER = `(workflow IS NULL OR workflow = '' OR LOWER(workflow) IN ('qaqc', 'qa_qc', 'qa-qc'))`;
 
@@ -14,6 +15,12 @@ function mapReport(row) {
     workflow: row.workflow,
     report_title: row.report_title,
     checked_by_user_id: row.checked_by_user_id,
+    prompt_tokens: Number(row.prompt_tokens || 0),
+    completion_tokens: Number(row.completion_tokens || 0),
+    total_tokens: Number(row.total_tokens || 0),
+    token_cost_usd: Number(row.token_cost_usd || 0),
+    ai_provider: row.ai_provider || '',
+    ai_model: row.ai_model || '',
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -24,8 +31,9 @@ async function create(record) {
     `INSERT INTO process_reports (
        id, document_type, main_document_name, support_document_name,
        report_markdown, report_structured, workflow, report_title,
-       checked_by_user_id, created_at
-     ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, COALESCE($10::timestamptz, NOW()))
+       checked_by_user_id, prompt_tokens, completion_tokens, total_tokens,
+       token_cost_usd, ai_provider, ai_model, created_at
+     ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14, $15, COALESCE($16::timestamptz, NOW()))
      RETURNING *`,
     [
       record.id,
@@ -37,6 +45,12 @@ async function create(record) {
       record.workflow || 'qaqc',
       record.report_title || '',
       record.checked_by_user_id || '',
+      Number(record.prompt_tokens || 0),
+      Number(record.completion_tokens || 0),
+      Number(record.total_tokens || 0),
+      Number(record.token_cost_usd || 0),
+      record.ai_provider || '',
+      record.ai_model || '',
       record.created_at || null,
     ],
   );
@@ -90,6 +104,78 @@ async function countWithFilter(ownerFilter) {
   return rows[0].cnt;
 }
 
+async function usageSummary(ownerFilter) {
+  const { clause, values } = buildWhere(ownerFilter);
+  const [totals, names] = await Promise.all([
+    pool.query(
+      `SELECT
+         COUNT(*)::int AS reports,
+         COALESCE(SUM(prompt_tokens), 0)::bigint AS prompt_tokens,
+         COALESCE(SUM(completion_tokens), 0)::bigint AS completion_tokens,
+         COALESCE(SUM(total_tokens), 0)::bigint AS total_tokens,
+         COALESCE(SUM(token_cost_usd), 0)::float8 AS token_cost_usd
+       FROM process_reports WHERE ${clause}`,
+      values,
+    ),
+    pool.query(
+      `SELECT main_document_name, support_document_name FROM process_reports WHERE ${clause}`,
+      values,
+    ),
+  ]);
+  const row = totals.rows[0] || {};
+  const documents = names.rows.reduce(
+    (sum, item) => sum + countDocuments(item.main_document_name, item.support_document_name),
+    0,
+  );
+  return {
+    reports: Number(row.reports || 0),
+    documents,
+    prompt_tokens: Number(row.prompt_tokens || 0),
+    completion_tokens: Number(row.completion_tokens || 0),
+    total_tokens: Number(row.total_tokens || 0),
+    token_cost_usd: Number(row.token_cost_usd || 0),
+  };
+}
+
+async function usageByUser(ownerFilter) {
+  const { clause, values } = buildWhere(ownerFilter);
+  const { rows } = await pool.query(
+    `SELECT
+       checked_by_user_id,
+       main_document_name,
+       support_document_name,
+       prompt_tokens,
+       completion_tokens,
+       total_tokens,
+       token_cost_usd
+     FROM process_reports WHERE ${clause}`,
+    values,
+  );
+  const map = new Map();
+  for (const row of rows) {
+    const userId = String(row.checked_by_user_id || '').trim();
+    if (!map.has(userId)) {
+      map.set(userId, {
+        user_id: userId,
+        reports: 0,
+        documents: 0,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+        token_cost_usd: 0,
+      });
+    }
+    const item = map.get(userId);
+    item.reports += 1;
+    item.documents += countDocuments(row.main_document_name, row.support_document_name);
+    item.prompt_tokens += Number(row.prompt_tokens || 0);
+    item.completion_tokens += Number(row.completion_tokens || 0);
+    item.total_tokens += Number(row.total_tokens || 0);
+    item.token_cost_usd += Number(row.token_cost_usd || 0);
+  }
+  return [...map.values()].sort((a, b) => b.total_tokens - a.total_tokens || b.documents - a.documents);
+}
+
 async function findWithFilter(ownerFilter, { limit = 500 } = {}) {
   const { clause, values } = buildWhere(ownerFilter);
   const { rows } = await pool.query(
@@ -105,6 +191,8 @@ module.exports = {
   update,
   deleteById,
   countWithFilter,
+  usageSummary,
+  usageByUser,
   findWithFilter,
   QA_QC_SQL_FILTER,
 };

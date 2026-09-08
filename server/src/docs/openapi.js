@@ -443,7 +443,14 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           responses: {
             200: {
               description: 'Counts scoped to the caller (Master sees all)',
-              ...jsonContent({ $ref: '#/components/schemas/DashboardStats' }, { qaqcTotal: 12 }),
+              ...jsonContent({ $ref: '#/components/schemas/DashboardStats' }, {
+                qaqcTotal: 12,
+                documents: 28,
+                prompt_tokens: 120000,
+                completion_tokens: 18000,
+                total_tokens: 138000,
+                token_cost_usd: 0.42,
+              }),
             },
             ...authErrors,
           },
@@ -934,7 +941,31 @@ function buildOpenApiSpec({ serverUrl } = {}) {
         },
         DashboardStats: {
           type: 'object',
-          properties: { qaqcTotal: { type: 'integer' } },
+          properties: {
+            qaqcTotal: { type: 'integer' },
+            documents: { type: 'integer' },
+            prompt_tokens: { type: 'integer' },
+            completion_tokens: { type: 'integer' },
+            total_tokens: { type: 'integer' },
+            token_cost_usd: { type: 'number' },
+            byUser: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  user_id: { type: 'string' },
+                  username: { type: 'string' },
+                  email: { type: 'string' },
+                  reports: { type: 'integer' },
+                  documents: { type: 'integer' },
+                  prompt_tokens: { type: 'integer' },
+                  completion_tokens: { type: 'integer' },
+                  total_tokens: { type: 'integer' },
+                  token_cost_usd: { type: 'number' },
+                },
+              },
+            },
+          },
         },
         SidebarSection: {
           type: 'object',

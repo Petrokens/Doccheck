@@ -1,8 +1,14 @@
 const userRepo = require('../db/repositories/userRepository');
 const roleRepo = require('../db/repositories/roleRepository');
 const permissionRepo = require('../db/repositories/permissionRepository');
+const sidebarRepo = require('../db/repositories/sidebarRepository');
 const { publicError, internalError } = require('../security/httpErrors');
 const { audit, recent, startedAt } = require('../security/audit');
+const {
+  defaultItemIds,
+  normalizeAssignedIds,
+  toCatalog,
+} = require('../security/sidebarAccess');
 
 exports.listUsers = async (_req, res) => {
   try {
@@ -118,6 +124,8 @@ exports.createRole = async (req, res) => {
     const roles = await roleRepo.findAll();
     const nextId = Math.max(0, ...roles.map((r) => r.id)) + 1;
     const role = await roleRepo.create({ id: nextId, name });
+    const items = await sidebarRepo.listRawItems();
+    await sidebarRepo.setRoleItemIds(role.id, defaultItemIds(role.id, items));
     audit('admin.role_create', { actor: req.user?.user_id, role_id: role.id });
     return res.status(201).json({ role });
   } catch (error) {
@@ -165,5 +173,50 @@ exports.setRolePermissions = async (req, res) => {
     return res.json({ message: 'Permissions updated' });
   } catch (error) {
     return internalError(res, error, 'Failed to update permissions');
+  }
+};
+
+exports.listSidebarCatalog = async (_req, res) => {
+  try {
+    const sections = await sidebarRepo.listSectionsWithItems();
+    return res.json({ catalog: toCatalog(sections) });
+  } catch (error) {
+    return internalError(res, error, 'Failed to load sidebar catalog');
+  }
+};
+
+exports.getRoleSidebar = async (req, res) => {
+  try {
+    const roleId = Number(req.params.id);
+    if (!Number.isInteger(roleId) || roleId < 1) return publicError(res, 400, 'Role id required');
+    const role = await roleRepo.findById(roleId);
+    if (!role) return publicError(res, 404, 'Role not found');
+    const itemIds = await sidebarRepo.listRoleItemIds(roleId);
+    return res.json({
+      role_id: role.id,
+      item_ids: itemIds,
+    });
+  } catch (error) {
+    return internalError(res, error, 'Failed to load role sidebar access');
+  }
+};
+
+exports.setRoleSidebar = async (req, res) => {
+  try {
+    const roleId = Number(req.params.id);
+    if (!Number.isInteger(roleId) || roleId < 1) return publicError(res, 400, 'Role id required');
+    const role = await roleRepo.findById(roleId);
+    if (!role) return publicError(res, 404, 'Role not found');
+    const items = await sidebarRepo.listRawItems();
+    const requested = Array.isArray(req.body?.item_ids) ? req.body.item_ids : req.body?.sidebar_item_ids;
+    const nextIds = normalizeAssignedIds(roleId, requested, items);
+    const itemIds = await sidebarRepo.setRoleItemIds(roleId, nextIds);
+    audit('admin.role_sidebar_set', { actor: req.user?.user_id, role_id: roleId, count: itemIds.length });
+    return res.json({
+      role_id: role.id,
+      item_ids: itemIds,
+    });
+  } catch (error) {
+    return internalError(res, error, 'Failed to update role sidebar access');
   }
 };

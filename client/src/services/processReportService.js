@@ -19,6 +19,7 @@ export async function generateProcessReport({ documentType, mainDocument, suppor
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 300000,
   });
+  
   return response.data?.report;
 }
 

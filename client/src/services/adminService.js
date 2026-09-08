@@ -63,3 +63,18 @@ export async function fetchSystemLogs() {
   const { data } = await api.get('/system-logs');
   return data;
 }
+
+export async function listSidebarCatalog() {
+  const { data } = await api.get('/roles/sidebar-catalog');
+  return data.catalog || [];
+}
+
+export async function getRoleSidebar(roleId) {
+  const { data } = await api.get(`/roles/${roleId}/sidebar`);
+  return data;
+}
+
+export async function setRoleSidebar(roleId, item_ids) {
+  const { data } = await api.put(`/roles/${roleId}/sidebar`, { item_ids });
+  return data;
+}

@@ -26,7 +26,7 @@ export function RoleProtectedRoute({ children, roles = [1] }) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-[#475569]">Checking your session…</div>;
   }
   if (!roles.includes(Number(user.role_id))) {
-    return <Navigate to="/dashboard/qa-qc/process" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
@@ -34,6 +34,6 @@ export function RoleProtectedRoute({ children, roles = [1] }) {
 export function PublicAuthRoute({ children }) {
   const { ready, authenticated } = useSessionAuth();
   if (!ready) return children;
-  if (authenticated) return <Navigate to="/dashboard/qa-qc/process" replace />;
+  if (authenticated) return <Navigate to="/dashboard" replace />;
   return children;
 }
