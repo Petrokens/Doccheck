@@ -1,6 +1,6 @@
 const path = require('path');
 
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_FILE_BYTES = 100 * 1024 * 1024;
 const ALLOWED_EXT = new Set(['.pdf', '.docx', '.txt', '.csv', '.md', '.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff']);
 
 const MAGIC = [
@@ -24,7 +24,7 @@ function isAllowedUpload(file) {
   if (!ALLOWED_EXT.has(ext)) return { ok: false, reason: 'File type is not allowed.' };
   const buf = file.buffer;
   if (!Buffer.isBuffer(buf) || !buf.length) return { ok: false, reason: 'Empty file.' };
-  if (buf.length > MAX_FILE_BYTES) return { ok: false, reason: 'File exceeds the 25 MB limit.' };
+  if (buf.length > MAX_FILE_BYTES) return { ok: false, reason: 'File exceeds the 100 MB limit.' };
   const match = MAGIC.find((rule) => rule.ext.includes(ext));
   if (match && !match.test(buf)) return { ok: false, reason: 'File contents do not match the declared type.' };
   return { ok: true };

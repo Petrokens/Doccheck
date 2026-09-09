@@ -11,7 +11,7 @@ function handleProcessReportUpload(err, req, res, next) {
   if (!err) return next();
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'A file exceeds the 25 MB limit.' });
+      return res.status(400).json({ error: 'A file exceeds the 100 MB limit.' });
     }
     return res.status(400).json({ error: 'File upload failed.' });
   }

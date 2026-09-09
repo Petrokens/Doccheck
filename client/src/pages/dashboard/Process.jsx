@@ -9,6 +9,7 @@ import DocumentImageReaderSection from '@/components/Common/DocumentImageReaderS
 import {
   inferDocumentTypeFromFile,
 } from '@/utils/inferQaQcDocumentType';
+import { openPdfFromFile } from '@/lib/pdfjsClient';
 import { validateUploadFile } from '@/lib/uploadSafety';
 import {
   AlertTriangle,
@@ -51,15 +52,15 @@ const DEFAULT_INITIAL_LOGS = [
 
 async function getPdfPageCount(file) {
   if (!file?.name?.toLowerCase().endsWith('.pdf')) return null;
+  let objectUrl = '';
   try {
-    const pdfjsLib = await import('pdfjs-dist');
-    if (pdfjsLib?.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-    }
-    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-    return pdf.numPages || null;
+    const opened = await openPdfFromFile(file);
+    objectUrl = opened.objectUrl;
+    return opened.pdf.numPages || null;
   } catch {
     return null;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
   }
 }
 
@@ -323,7 +324,12 @@ export default function Process({
               <Button type="button" onClick={() => fileInputRef.current?.click()}>
                 Choose File
               </Button>
-              {mainDocument ? <p className="mt-3 truncate text-xs font-medium text-emerald-600 dark:text-emerald-300">{mainDocument.name}</p> : null}
+              {mainDocument ? (
+                <p className="mt-3 truncate text-xs font-medium text-emerald-600 dark:text-emerald-300">
+                  {mainDocument.name}
+                  {mainDocument.size ? ` · ${(mainDocument.size / (1024 * 1024)).toFixed(1)} MB` : ''}
+                </p>
+              ) : null}
             </div>
 
             {mainDocument ? (

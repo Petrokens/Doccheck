@@ -73,7 +73,7 @@ function tdClass(kind) {
     case 'sno':
       return cn(base, 'whitespace-nowrap text-center tabular-nums text-muted-foreground');
     case 'id':
-      return cn(base, 'whitespace-nowrap font-mono text-[11px] font-medium text-primary');
+      return cn(base, 'whitespace-nowrap font-mono text-[11px] font-medium text-primary print:text-black');
     case 'severity':
     case 'status':
     case 'score':
@@ -93,18 +93,18 @@ function StatusPill({ value, kind }) {
     return <>{parseInline(raw)}</>;
   }
   const key = raw.toLowerCase();
-  let tone = 'bg-muted text-foreground';
+  let tone = 'bg-muted text-foreground print:bg-white print:text-black print:border print:border-black';
   if (kind === 'severity') {
-    if (/critical|high/.test(key)) tone = 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300';
-    else if (/major|medium/.test(key)) tone = 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300';
-    else if (/minor|low/.test(key)) tone = 'bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-300';
+    if (/critical|high/.test(key)) tone = 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 print:bg-white print:text-black print:border print:border-black';
+    else if (/major|medium/.test(key)) tone = 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300 print:bg-white print:text-black print:border print:border-black';
+    else if (/minor|low/.test(key)) tone = 'bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-300 print:bg-white print:text-black print:border print:border-black';
   } else if (kind === 'status') {
-    if (/^ok$|pass|compliant|complete|yes/.test(key)) tone = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300';
-    else if (/not\s*ok|fail|non.?compliant|no\b|reject/.test(key)) tone = 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300';
-    else if (/partial|hold|n\/?a|open|review/.test(key)) tone = 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300';
+    if (/^ok$|pass|compliant|complete|yes/.test(key)) tone = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 print:bg-white print:text-black print:border print:border-black';
+    else if (/not\s*ok|fail|non.?compliant|no\b|reject/.test(key)) tone = 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 print:bg-white print:text-black print:border print:border-black';
+    else if (/partial|hold|n\/?a|open|review/.test(key)) tone = 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300 print:bg-white print:text-black print:border print:border-black';
   }
   return (
-    <span className={cn('inline-flex min-w-[4.25rem] items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-semibold', tone)}>
+    <span className={cn('inline-flex min-w-[4.25rem] items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-semibold print:rounded-none', tone)}>
       {raw}
     </span>
   );
@@ -170,7 +170,7 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
 
   const shell =
     variant === 'document'
-      ? 'prose-report mx-auto max-w-none space-y-4 rounded-lg border border-border/80 bg-card px-5 py-5 text-sm text-foreground shadow-sm sm:px-6 sm:py-6'
+      ? 'prose-report mx-auto max-w-none space-y-4 rounded-lg border border-border/80 bg-card px-5 py-5 text-sm text-foreground shadow-sm print:rounded-none print:border-black print:bg-white print:text-black print:shadow-none sm:px-6 sm:py-6'
       : 'space-y-2 text-sm';
 
   return (
@@ -178,21 +178,21 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
       {blocks.map((block, index) => {
         if (block.type === 'h1') {
           return (
-            <h1 key={index} className="border-b border-border pb-2 text-xl font-bold tracking-tight text-primary">
+            <h1 key={index} className="border-b border-border pb-2 text-xl font-bold tracking-tight text-primary print:border-black print:text-black">
               {parseInline(block.text)}
             </h1>
           );
         }
         if (block.type === 'h2') {
           return (
-            <h2 key={index} className="mt-2 border-b border-border/70 pb-1.5 text-base font-semibold tracking-tight text-foreground">
+            <h2 key={index} className="mt-2 border-b border-border/70 pb-1.5 text-base font-semibold tracking-tight text-foreground print:border-black print:text-black">
               {parseInline(block.text)}
             </h2>
           );
         }
         if (block.type === 'h3') {
           return (
-            <h3 key={index} className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 key={index} className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground print:text-black">
               {parseInline(block.text)}
             </h3>
           );
@@ -201,7 +201,7 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
           return (
             <ul key={index} className="space-y-1.5 pl-5">
               {block.items.map((item, li) => (
-                <li key={li} className="list-disc leading-relaxed marker:text-primary/70">
+                <li key={li} className="list-disc leading-relaxed marker:text-primary/70 print:marker:text-black">
                   {parseInline(item)}
                 </li>
               ))}

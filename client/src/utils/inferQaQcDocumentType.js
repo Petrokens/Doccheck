@@ -1,3 +1,5 @@
+import { openPdfFromFile } from '@/lib/pdfjsClient';
+
 const STOPWORDS = new Set([
   'and', 'the', 'for', 'with', 'from', 'document', 'report', 'checklist', 'process',
   'pdf', 'docx', 'doc', 'txt', 'csv', 'png', 'jpg', 'jpeg',
@@ -109,12 +111,12 @@ export function inferDocumentTypeFromHaystack(haystack, types) {
 }
 
 async function extractPdfSnippet(file, maxPages = 3) {
+  if ((file?.size || 0) > 20 * 1024 * 1024) return '';
+  let objectUrl = '';
   try {
-    const pdfjsLib = await import('pdfjs-dist');
-    if (pdfjsLib?.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.4.168'}/build/pdf.worker.min.mjs`;
-    }
-    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const opened = await openPdfFromFile(file);
+    objectUrl = opened.objectUrl;
+    const { pdf } = opened;
     const pageCount = Math.min(pdf.numPages || 0, maxPages);
     const chunks = [];
     for (let i = 1; i <= pageCount; i += 1) {
@@ -128,6 +130,8 @@ async function extractPdfSnippet(file, maxPages = 3) {
     return chunks.join('\n').slice(0, 8000);
   } catch {
     return '';
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
   }
 }
 

@@ -1,5 +1,5 @@
 export const ALLOWED_UPLOAD_EXT = ['.pdf', '.docx', '.txt', '.csv', '.md', '.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff'];
-export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 export function validateUploadFile(file) {
   if (!file) return { ok: false, reason: 'No file selected.' };
@@ -9,7 +9,7 @@ export function validateUploadFile(file) {
     return { ok: false, reason: 'File type is not allowed.' };
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    return { ok: false, reason: 'File exceeds the 25 MB limit.' };
+    return { ok: false, reason: 'File exceeds the 100 MB limit.' };
   }
   return { ok: true };
 }

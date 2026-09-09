@@ -64,6 +64,7 @@ async function loadMuPdf() {
 async function preprocessForOcr(imageBuffer) {
   return sharp(imageBuffer)
     .rotate()
+    .resize({ width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true })
     .grayscale()
     .normalize()
     .sharpen({ sigma: 1.1 })
@@ -97,7 +98,19 @@ async function analyzeImageWithVision(imageBuffer, { pageLabel = 'page', mime = 
   if (!client || !visionEnabled()) return '';
 
   const model = String(process.env.OPENAI_VISION_MODEL || getOpenAIModel() || 'gpt-4o-mini').trim();
-  const b64 = Buffer.from(imageBuffer).toString('base64');
+  let prepared = imageBuffer;
+  let imageMime = mime;
+  try {
+    prepared = await sharp(imageBuffer)
+      .rotate()
+      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 78 })
+      .toBuffer();
+    imageMime = 'image/jpeg';
+  } catch {
+    prepared = imageBuffer;
+  }
+  const b64 = Buffer.from(prepared).toString('base64');
   emit(`Vision image analysis on ${pageLabel} (${model})…`);
 
   try {
@@ -120,7 +133,7 @@ async function analyzeImageWithVision(imageBuffer, { pageLabel = 'page', mime = 
             },
             {
               type: 'image_url',
-              image_url: { url: `data:${mime};base64,${b64}`, detail: 'high' },
+              image_url: { url: `data:${imageMime};base64,${b64}`, detail: 'high' },
             },
           ],
         },
@@ -189,7 +202,17 @@ function extractNativeFromMuPage(page) {
 }
 
 function renderMuPagePng(mupdf, page, scale = DEFAULT_SCALE) {
-  const matrix = mupdf.Matrix.scale(scale, scale);
+  let fitted = scale;
+  try {
+    const bounds = page.getBounds();
+    const width = Math.abs(bounds[2] - bounds[0]) || 1;
+    const height = Math.abs(bounds[3] - bounds[1]) || 1;
+    const maxEdge = Math.max(1, Number(process.env.OCR_MAX_RASTER_EDGE || 2200) || 2200);
+    fitted = Math.min(scale, maxEdge / Math.max(width, height));
+  } catch {
+    fitted = Math.min(scale, 1.2);
+  }
+  const matrix = mupdf.Matrix.scale(fitted, fitted);
   const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB, false, true);
   const png = Buffer.from(pixmap.asPNG());
   try {

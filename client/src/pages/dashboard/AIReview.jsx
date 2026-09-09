@@ -200,7 +200,12 @@ export default function AIReview() {
             <DialogDescription>Print or review the stored analysis.</DialogDescription>
           </DialogHeader>
           {report?.id ? (
-            <Button type="button" size="sm" className="w-fit" onClick={() => printProcessReportPdf(report.id)}>
+            <Button
+              type="button"
+              size="sm"
+              className="w-fit"
+              onClick={() => printProcessReportPdf(report.id).catch((err) => setError(err.message))}
+            >
               <Printer /> Print PDF
             </Button>
           ) : null}

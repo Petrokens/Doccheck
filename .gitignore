@@ -8,3 +8,5 @@ Thumbs.db
 server/reports/
 client/node_modules/
 server/node_modules/
+desktop/renderer/
+desktop/release/

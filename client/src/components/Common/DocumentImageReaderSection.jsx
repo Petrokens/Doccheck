@@ -3,9 +3,9 @@ import ReportMarkdownView from '@/components/Common/ReportMarkdownView';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { openPdfFromFile, previewPageLimit, renderPdfPageSafe } from '@/lib/pdfjsClient';
 import { Brain, CheckCircle2, Eye, FileSearch, Loader2, ScanLine } from 'lucide-react';
 
-const MAX_RENDER_PAGES = 40;
 const PAGE_DWELL_MS = 1600;
 const IMAGE_RE = /\.(png|jpe?g|webp|tif|tiff)$/i;
 const PDF_RE = /\.pdf$/i;
@@ -61,17 +61,6 @@ function buildPageMarkdown(pageNum, embeddedText, logEntry) {
     lines.push('_Scanning this page for OCR tokens…_');
   }
   return lines.join('\n').trim();
-}
-
-async function loadPdfjs() {
-  const pdfjsLib = await import('pdfjs-dist');
-  if (pdfjsLib?.GlobalWorkerOptions) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).toString();
-  }
-  return pdfjsLib;
 }
 
 function textFromPdfItems(items = []) {
@@ -167,6 +156,7 @@ export default function DocumentImageReaderSection({
   const [loadProgress, setLoadProgress] = useState({ current: 0, total: 0 });
   const [userLocked, setUserLocked] = useState(false);
   const abortRef = useRef(0);
+  const objectUrlRef = useRef('');
   const scanCursorRef = useRef(0);
   const thumbStripRef = useRef(null);
 
@@ -221,6 +211,7 @@ export default function DocumentImageReaderSection({
 
     const name = mainDocument.name || '';
     if (IMAGE_RE.test(name)) {
+      setIsLoadingPages(false);
       const url = URL.createObjectURL(mainDocument);
       setImagePreview(url);
       setTotalPages(1);
@@ -229,6 +220,7 @@ export default function DocumentImageReaderSection({
     }
 
     if (!PDF_RE.test(name)) {
+      setIsLoadingPages(false);
       setImagePreview(null);
       setTotalPages(0);
       setPages([]);
@@ -236,28 +228,25 @@ export default function DocumentImageReaderSection({
     }
 
     setIsLoadingPages(true);
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = '';
+    }
 
     (async () => {
       try {
-        const pdfjsLib = await loadPdfjs();
+        const opened = await openPdfFromFile(mainDocument);
+        objectUrlRef.current = opened.objectUrl;
+        const { pdf, pdfjsLib } = opened;
         if (seq !== abortRef.current) return;
-        const data = await mainDocument.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data }).promise;
         const total = pdf.numPages || 0;
-        const limit = Math.min(total, MAX_RENDER_PAGES);
-        if (seq !== abortRef.current) return;
+        const limit = previewPageLimit(mainDocument.size, total);
         setTotalPages(total);
 
         const built = [];
         for (let pageNum = 1; pageNum <= limit; pageNum += 1) {
           if (seq !== abortRef.current) return;
           const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1.15 });
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          await page.render({ canvasContext: context, viewport }).promise;
           let text = '';
           try {
             const content = await page.getTextContent();
@@ -265,19 +254,30 @@ export default function DocumentImageReaderSection({
           } catch {
             text = '';
           }
+          const previewUrl = await renderPdfPageSafe(page, pdfjsLib, pageNum);
+          try {
+            page.cleanup?.();
+          } catch {
+            // ignore
+          }
           built.push({
             pageNum,
-            previewUrl: canvas.toDataURL('image/jpeg', 0.82),
+            previewUrl,
             text,
             charCount: text.length,
           });
           setPages([...built]);
-          setLoadProgress({ current: pageNum, total });
+          setLoadProgress({ current: pageNum, total: limit });
           if (pageNum === 1) setActivePage(1);
         }
       } catch (err) {
         if (seq !== abortRef.current) return;
-        setLoadError(err?.message || 'Could not render document pages.');
+        const raw = String(err?.message || 'Could not render document pages.');
+        setLoadError(
+          /toHex is not a function/i.test(raw)
+            ? 'This drawing uses a CAD color space the previewer cannot paint. Analysis can still run — start QA/QC.'
+            : raw,
+        );
       } finally {
         if (seq === abortRef.current) setIsLoadingPages(false);
       }
@@ -285,6 +285,10 @@ export default function DocumentImageReaderSection({
 
     return () => {
       abortRef.current += 1;
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = '';
+      }
     };
   }, [mainDocument]);
 
@@ -357,7 +361,7 @@ export default function DocumentImageReaderSection({
             {mainDocument.name}
             {supportDocument ? ` · support: ${supportDocument.name}` : ''}
             {totalPages ? ` · ${totalPages} page${totalPages === 1 ? '' : 's'}` : ''}
-            {totalPages > MAX_RENDER_PAGES ? ` (previewing first ${MAX_RENDER_PAGES})` : ''}
+            {pages.length && totalPages > pages.length ? ` (previewing first ${pages.length})` : ''}
           </CardDescription>
         </div>
         <PhaseBadge phase={isGenerating ? phase : phase === 'complete' ? 'complete' : 'idle'} />

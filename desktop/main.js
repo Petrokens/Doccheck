@@ -5,9 +5,39 @@ const http = require('http');
 const { pathToFileURL } = require('url');
 
 const APP_ICON = path.join(__dirname, 'assets', 'icon.png');
-const SPLASH_VIDEO = path.join(__dirname, 'assets', 'splash.mp4');
 const SPLASH_HTML = path.join(__dirname, 'splash.html');
-const SPLASH_MAX_MS = Number(process.env.ELECTRON_SPLASH_MS || 5500);
+const SPLASH_MAX_MS = Number(process.env.ELECTRON_SPLASH_MS || 11000);
+
+function resolveSplashVideo() {
+  const candidates = [
+    process.env.ELECTRON_SPLASH_VIDEO,
+    process.resourcesPath ? path.join(process.resourcesPath, 'splash.mp4') : null,
+    path.join(__dirname, '..', 'client', 'public', 'Splash.mp4'),
+    path.join(__dirname, '..', 'client', 'public', 'splash.mp4'),
+    path.join(__dirname, 'assets', 'splash.mp4'),
+  ].filter(Boolean);
+  return candidates.find((filePath) => fs.existsSync(filePath)) || null;
+}
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.webp': 'image/webp',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.mp4': 'video/mp4',
+  '.map': 'application/json',
+};
+
 const CANDIDATE_URLS = [
   process.env.ELECTRON_START_URL,
   'http://localhost:5174',
@@ -19,6 +49,7 @@ const CANDIDATE_URLS = [
 let mainWindow = null;
 let splashWindow = null;
 let splashDone = false;
+let rendererServer = null;
 let startUrl = CANDIDATE_URLS[0] || 'http://localhost:5174';
 
 function probeUrl(url, timeoutMs = 800) {
@@ -45,10 +76,59 @@ function probeUrl(url, timeoutMs = 800) {
   });
 }
 
+function rendererRoot() {
+  return path.join(__dirname, 'renderer');
+}
+
+function startRendererServer(rootDir) {
+  const root = path.resolve(rootDir);
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      try {
+        const urlPath = decodeURIComponent((req.url || '/').split('?')[0] || '/');
+        let target = path.resolve(root, `.${urlPath === '/' ? '/index.html' : urlPath}`);
+        if (!target.toLowerCase().startsWith(root.toLowerCase())) {
+          res.writeHead(403);
+          res.end();
+          return;
+        }
+        if (!fs.existsSync(target) || fs.statSync(target).isDirectory()) {
+          target = path.join(root, 'index.html');
+        }
+        const stream = fs.createReadStream(target);
+        stream.on('open', () => {
+          res.writeHead(200, { 'Content-Type': MIME[path.extname(target).toLowerCase()] || 'application/octet-stream' });
+          stream.pipe(res);
+        });
+        stream.on('error', () => {
+          res.writeHead(404);
+          res.end();
+        });
+      } catch {
+        res.writeHead(500);
+        res.end();
+      }
+    });
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      rendererServer = server;
+      resolve(`http://127.0.0.1:${server.address().port}`);
+    });
+  });
+}
+
 async function resolveStartUrl() {
+  if (app.isPackaged) {
+    const built = path.join(rendererRoot(), 'index.html');
+    if (!fs.existsSync(built)) return null;
+    return startRendererServer(rendererRoot());
+  }
   for (const url of CANDIDATE_URLS) {
     // eslint-disable-next-line no-await-in-loop
     if (await probeUrl(url)) return url;
+  }
+  if (fs.existsSync(path.join(rendererRoot(), 'index.html'))) {
+    return startRendererServer(rendererRoot());
   }
   return null;
 }
@@ -156,8 +236,8 @@ function finishSplash() {
 }
 
 function createSplashWindow() {
-  const hasVideo = fs.existsSync(SPLASH_VIDEO);
-  if (!hasVideo) {
+  const splashVideo = resolveSplashVideo();
+  if (!splashVideo) {
     splashDone = true;
     return null;
   }
@@ -183,7 +263,7 @@ function createSplashWindow() {
     },
   });
 
-  const videoUrl = encodeURIComponent(pathToFileURL(SPLASH_VIDEO).href);
+  const videoUrl = encodeURIComponent(pathToFileURL(splashVideo).href);
   splashWindow.loadFile(SPLASH_HTML, {
     query: {
       src: videoUrl,
@@ -217,5 +297,9 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  if (rendererServer) {
+    rendererServer.close();
+    rendererServer = null;
+  }
   if (process.platform !== 'darwin') app.quit();
 });

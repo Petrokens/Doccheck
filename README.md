@@ -51,7 +51,7 @@ Login uses email, password, and a one-time code emailed via **SMTP**. Set `SMTP_
 
 ### Desktop (Electron)
 
-Keep the API and Vite client running, then:
+**Run in development** (keep the Vite client running):
 
 ```bash
 cd desktop
@@ -59,7 +59,24 @@ npm install
 npm start
 ```
 
-The window loads `http://localhost:5174` after a ~5s splash video (`desktop/assets/splash.mp4`). Override with `ELECTRON_START_URL` if needed.
+The window loads `http://localhost:5174` after the splash video (`client/public/Splash.mp4`). Override with `ELECTRON_START_URL` if needed.
+
+**Build a Windows installer:**
+
+```bash
+cd desktop
+npm install
+npm run build
+```
+
+Installer output: `desktop/release/DocCheck-AI-Setup-1.0.0.exe`
+
+Other targets:
+
+```bash
+npm run build:portable
+npm run build:dir
+```
 
 ## Email (SMTP only)
 

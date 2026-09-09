@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Moon, Settings, Sun, UserCircle2 } from 'lucide-react';
+import { LogOut, Settings, UserCircle2 } from 'lucide-react';
 import SidebarMenuButton from '@/components/Layout/SidebarMenuButton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useSessionAuth } from '@/context/SessionAuthContext';
-import { resolveIsDark, setThemeMode } from '@/lib/theme';
 import { MAIN_PROFILE, MAIN_SETTINGS } from '@/lib/dashboardPaths';
 import { BRAND_EYEBROW, BRAND_TAGLINE } from '@/lib/brandCopy';
 import brandIcon from '@/assets/logo.png';
@@ -29,7 +28,6 @@ function formatGmtOffset(date) {
 export default function Topbar() {
   const navigate = useNavigate();
   const { logout, user } = useSessionAuth();
-  const [dark, setDark] = useState(() => resolveIsDark());
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -61,19 +59,6 @@ export default function Topbar() {
             {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-          onClick={() => {
-            const next = dark ? 'light' : 'dark';
-            setThemeMode(next);
-            setDark(resolveIsDark(next));
-          }}
-        >
-          {dark ? <Sun /> : <Moon />}
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" className="gap-2 px-2">

@@ -1,17 +1,11 @@
 export const THEME_STORAGE_KEY = 'theme';
 
 export function getThemeMode() {
-  if (typeof window === 'undefined') return 'light';
-  const v = localStorage.getItem(THEME_STORAGE_KEY);
-  if (v === 'light' || v === 'dark' || v === 'system') return v;
   return 'light';
 }
 
-export function resolveIsDark(mode = getThemeMode()) {
-  if (mode === 'dark') return true;
-  if (mode === 'light') return false;
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+export function resolveIsDark() {
+  return false;
 }
 
 export function roleThemeFromUser(user) {
@@ -29,13 +23,17 @@ export function clearRoleTheme() {
   delete document.documentElement.dataset.roleTheme;
 }
 
-export function applyDocumentTheme(mode = getThemeMode()) {
+export function applyDocumentTheme() {
   if (typeof document === 'undefined') return;
-  document.documentElement.classList.toggle('dark', resolveIsDark(mode));
+  document.documentElement.classList.remove('dark');
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+  } catch {
+    /* ignore */
+  }
 }
 
-export function setThemeMode(mode) {
-  localStorage.setItem(THEME_STORAGE_KEY, mode);
-  applyDocumentTheme(mode);
-  window.dispatchEvent(new CustomEvent('doccheck-theme-change', { detail: { mode } }));
+export function setThemeMode() {
+  applyDocumentTheme();
+  window.dispatchEvent(new CustomEvent('doccheck-theme-change', { detail: { mode: 'light' } }));
 }

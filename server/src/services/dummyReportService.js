@@ -17,6 +17,14 @@ function generateDummyQaQcReport({ documentType, mainDocumentName, supportDocume
 | Interface Score | 100.0 |
 | Final QC Score | 73 |
 
+## SECTION 3: SYSTEM INITIALIZATION
+| Item | Value |
+| --- | --- |
+| Engine | Petrolens QA/QC Report Engine |
+| Rule library | 4000-rule engineering QA library |
+| Mode | Demo fallback |
+| Document type | ${documentType || 'Engineering Document'} |
+
 ## SECTION 4: CHECK-1 QA/QC FIXED CHECKS
 | Check ID | Description | Status | Score | Remarks |
 | --- | --- | --- | --- | --- |
@@ -70,6 +78,12 @@ Configure a live AI key for full Check-1 / Check-2 / 4K-rule scoring on this pac
 
 ### Extract preview
 ${excerpt}
+
+## SECTION 10: SUPPORTING INFORMATION
+Review is based on extracted text from the uploaded main document and any support file. Scanned pages rely on OCR accuracy. Missing title-block, revision, or approval data should be confirmed against the native file.
+
+## SECTION 11: DISCLAIMER
+This QA/QC review is a decision-support output. It does not replace qualified engineering judgment, discipline-lead approval, or statutory design responsibility.
 `.trim();
 }
 

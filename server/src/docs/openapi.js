@@ -334,7 +334,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           tags: ['QA/QC'],
           summary: 'Generate QA/QC report',
           description:
-            'Upload 1–3 main documents and up to 5 support files. Allowed: pdf, docx, txt, csv, md, png, jpg, jpeg, webp, tif, tiff. Max 25 MB per file. Rate limit: 12 / hour / IP.',
+            'Upload 1–3 main documents and up to 5 support files. Allowed: pdf, docx, txt, csv, md, png, jpg, jpeg, webp, tif, tiff. Max 100 MB per file. Rate limit: 12 / hour / IP.',
           operationId: 'generateProcessReport',
           security: bearer,
           parameters: trustedOriginParams,
