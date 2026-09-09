@@ -4,7 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { openPdfFromFile, previewPageLimit, renderPdfPageSafe } from '@/lib/pdfjsClient';
-import { Brain, CheckCircle2, Eye, FileSearch, Loader2, ScanLine } from 'lucide-react';
+import { Brain, CheckCircle2, Eye, FileSearch, Loader2, RefreshCw, RotateCcw, ScanLine, ZoomIn, ZoomOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const PAGE_DWELL_MS = 1600;
 const IMAGE_RE = /\.(png|jpe?g|webp|tif|tiff)$/i;
@@ -155,6 +157,8 @@ export default function DocumentImageReaderSection({
   const [imagePreview, setImagePreview] = useState(null);
   const [loadProgress, setLoadProgress] = useState({ current: 0, total: 0 });
   const [userLocked, setUserLocked] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const abortRef = useRef(0);
   const objectUrlRef = useRef('');
   const scanCursorRef = useRef(0);
@@ -208,6 +212,7 @@ export default function DocumentImageReaderSection({
     setUserLocked(false);
     setPages([]);
     setLoadProgress({ current: 0, total: 0 });
+    setZoom(1);
 
     const name = mainDocument.name || '';
     if (IMAGE_RE.test(name)) {
@@ -272,11 +277,11 @@ export default function DocumentImageReaderSection({
         }
       } catch (err) {
         if (seq !== abortRef.current) return;
-        const raw = String(err?.message || 'Could not render document pages.');
+        const raw = String(err?.message || '');
         setLoadError(
           /toHex is not a function/i.test(raw)
-            ? 'This drawing uses a CAD color space the previewer cannot paint. Analysis can still run — start QA/QC.'
-            : raw,
+            ? 'Could not preview this PDF in the current engine. Refresh the page and try again, or start QA/QC without preview.'
+            : (raw || 'Could not preview this PDF. You can still start QA/QC analysis.'),
         );
       } finally {
         if (seq === abortRef.current) setIsLoadingPages(false);
@@ -290,7 +295,7 @@ export default function DocumentImageReaderSection({
         objectUrlRef.current = '';
       }
     };
-  }, [mainDocument]);
+  }, [mainDocument, reloadNonce]);
 
   // Strict one-by-one page scan: 1 → 2 → 3 … (never jump ahead)
   useEffect(() => {
@@ -364,7 +369,24 @@ export default function DocumentImageReaderSection({
             {pages.length && totalPages > pages.length ? ` (previewing first ${pages.length})` : ''}
           </CardDescription>
         </div>
-        <PhaseBadge phase={isGenerating ? phase : phase === 'complete' ? 'complete' : 'idle'} />
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label="Refresh preview"
+                disabled={isLoadingPages || isGenerating}
+                onClick={() => setReloadNonce((n) => n + 1)}
+              >
+                <RefreshCw className={isLoadingPages ? 'animate-spin' : ''} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Refresh preview</TooltipContent>
+          </Tooltip>
+          <PhaseBadge phase={isGenerating ? phase : phase === 'complete' ? 'complete' : 'idle'} />
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-4 pt-4">
@@ -400,30 +422,91 @@ export default function DocumentImageReaderSection({
         <div className="grid gap-4 lg:grid-cols-12">
           <div className="lg:col-span-7">
             <div className="relative overflow-hidden rounded-xl border bg-[#0b1220] shadow-inner">
-              <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-[11px] text-emerald-300/90">
+              <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2 text-[11px] text-emerald-300/90">
                 <span className="font-mono">
                   PAGE {activePage}
                   {totalPages ? ` / ${totalPages}` : ''}
                 </span>
-                <span className="font-mono uppercase tracking-wider">
-                  {isGenerating ? (scanningNow ? 'OCR PASS' : phase === 'ai' ? 'AI PASS' : 'OCR PASS') : 'PREVIEW'}
-                </span>
+                <div className="flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="text-emerald-300 hover:bg-white/10 hover:text-white"
+                        aria-label="Zoom out"
+                        disabled={zoom <= 0.5}
+                        onClick={() => setZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+                      >
+                        <ZoomOut />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Zoom out</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="text-emerald-300 hover:bg-white/10 hover:text-white"
+                        aria-label="Reset zoom"
+                        onClick={() => setZoom(1)}
+                      >
+                        <RotateCcw />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Reset zoom</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="text-emerald-300 hover:bg-white/10 hover:text-white"
+                        aria-label="Zoom in"
+                        disabled={zoom >= 3}
+                        onClick={() => setZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+                      >
+                        <ZoomIn />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Zoom in</TooltipContent>
+                  </Tooltip>
+                  <span className="ml-1 font-mono uppercase tracking-wider">
+                    {isGenerating ? (scanningNow ? 'OCR PASS' : phase === 'ai' ? 'AI PASS' : 'OCR PASS') : 'PREVIEW'}
+                  </span>
+                </div>
               </div>
 
-              <div className="relative flex min-h-[280px] items-center justify-center bg-[radial-gradient(circle_at_top,#132033,#0b1220)] p-4">
+              <div className="relative flex min-h-[280px] items-center justify-center overflow-auto bg-[radial-gradient(circle_at_top,#132033,#0b1220)] p-4">
                 {isLoadingPages && !pages.length ? (
                   <div className="flex flex-col items-center gap-2 text-emerald-300/80">
                     <Loader2 className="size-6 animate-spin" />
                     <p className="text-xs">Rendering document pages…</p>
                   </div>
                 ) : loadError ? (
-                  <p className="max-w-sm text-center text-sm text-amber-200">{loadError}</p>
+                  <div className="flex max-w-sm flex-col items-center gap-3 px-4 text-center">
+                    <p className="text-sm text-amber-200">{loadError}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-emerald-400/40 bg-transparent text-emerald-200 hover:bg-white/10 hover:text-white"
+                      onClick={() => setReloadNonce((n) => n + 1)}
+                    >
+                      <RefreshCw /> Retry preview
+                    </Button>
+                  </div>
                 ) : active?.previewUrl || imagePreview ? (
                   <>
                     <img
                       src={active?.previewUrl || imagePreview}
                       alt={`Scanning page ${activePage}`}
                       className="max-h-[360px] w-auto max-w-full rounded-md object-contain shadow-lg shadow-black/40"
+                      style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
                     />
                     {showBeam ? (
                       <div className="pointer-events-none absolute inset-4 overflow-hidden rounded-md">

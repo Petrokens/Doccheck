@@ -1,7 +1,12 @@
-/** Shared pdf.js loader for browser + Electron. Avoids CDN worker mismatches. */
+/** Shared pdf.js loader for browser + Electron. */
+
+import './uint8ArrayHexPolyfill.js';
+import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
 const MAX_PREVIEW_EDGE = 1400;
 const MAX_THUMB_EDGE = 220;
+
+let workerPort = null;
 
 export function previewPageLimit(fileSizeBytes, totalPages) {
   const mb = Number(fileSizeBytes || 0) / (1024 * 1024);
@@ -9,36 +14,54 @@ export function previewPageLimit(fileSizeBytes, totalPages) {
   return Math.min(Math.max(1, totalPages || 1), cap);
 }
 
+function absoluteUrl(src) {
+  try {
+    return new URL(src, window.location.href).href;
+  } catch {
+    return src;
+  }
+}
+
 export async function loadPdfjs() {
-  const pdfjsLib = await import('pdfjs-dist');
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const src = absoluteUrl(workerSrc);
   if (pdfjsLib?.GlobalWorkerOptions) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).toString();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = src;
+    if (typeof Worker !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerPort) {
+      try {
+        workerPort = workerPort || new Worker(src, { type: 'module' });
+        pdfjsLib.GlobalWorkerOptions.workerPort = workerPort;
+      } catch {
+        pdfjsLib.GlobalWorkerOptions.workerPort = null;
+      }
+    }
   }
   return pdfjsLib;
+}
+
+function documentOptions(extra = {}) {
+  return {
+    isEvalSupported: false,
+    useSystemFonts: true,
+    isOffscreenCanvasSupported: false,
+    verbosity: 0,
+    ...extra,
+  };
 }
 
 export async function openPdfFromFile(file) {
   const pdfjsLib = await loadPdfjs();
   const url = URL.createObjectURL(file);
   try {
-    const pdf = await pdfjsLib.getDocument({
-      url,
-      disableRange: false,
-      disableStream: false,
-      disableAutoFetch: false,
-      isEvalSupported: false,
-      useSystemFonts: true,
-      isOffscreenCanvasSupported: false,
-      verbosity: 0,
-    }).promise;
+    const pdf = await pdfjsLib.getDocument(documentOptions({ url })).promise;
     return { pdf, pdfjsLib, objectUrl: url };
-  } catch (error) {
+  } catch {
     URL.revokeObjectURL(url);
-    throw error;
   }
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjsLib.getDocument(documentOptions({ data })).promise;
+  return { pdf, pdfjsLib, objectUrl: '' };
 }
 
 function fitScale(viewport, maxEdge) {
@@ -111,12 +134,7 @@ export async function renderPdfPagePreview(page, pdfjsLib, { maxEdge = MAX_PREVI
     }
   }
 
-  if (lastError) {
-    const msg = String(lastError.message || lastError);
-    if (!/toHex is not a function/i.test(msg)) {
-      throw lastError;
-    }
-  }
+  if (lastError) throw lastError;
   return null;
 }
 

@@ -18,6 +18,7 @@ import {
   FileText,
   FileUp,
   Printer,
+  RefreshCw,
   Share2,
   UploadCloud,
 } from 'lucide-react';
@@ -453,7 +454,9 @@ export default function Process({
               <Button type="button" onClick={() => reportMarkdownAnchorRef.current?.scrollIntoView({ behavior: 'smooth' })}>
                 <FileText /> Open report
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={async () => { const latest = await fetchProcessReport(report.id); setReport(latest); }}>Refresh</Button>
+              <Button type="button" variant="outline" size="sm" onClick={async () => { const latest = await fetchProcessReport(report.id); setReport(latest); }}>
+                <RefreshCw /> Refresh
+              </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => printProcessReportPdf(report.id)}><Printer /> Print PDF</Button>
               <Button type="button" variant="outline" size="sm"><Share2 /> Share</Button>
             </div>

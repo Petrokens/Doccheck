@@ -68,7 +68,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
               description: 'API is running',
               ...jsonContent(
                 { $ref: '#/components/schemas/Health' },
-                { ok: true, product: 'DocCheck AI' },
+                { ok: true, product: 'DocCheck AI', version: '1.1.0' },
               ),
             },
           },
@@ -894,6 +894,10 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           properties: {
             ok: { type: 'boolean' },
             product: { type: 'string' },
+            version: { type: 'string', description: 'Latest published application version' },
+            forceUpdate: { type: 'boolean' },
+            message: { type: 'string' },
+            downloadUrl: { type: 'string' },
           },
         },
         RegisterRequest: {

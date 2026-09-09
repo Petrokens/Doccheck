@@ -40,9 +40,19 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
   },
+  worker: {
+    format: 'es',
+  },
+  optimizeDeps: {
+    include: ['pdfjs-dist/legacy/build/pdf.mjs'],
+    exclude: ['pdfjs-dist/legacy/build/pdf.worker.min.mjs'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.VITE_APP_VERSION || '1.0.0'),
   },
 });

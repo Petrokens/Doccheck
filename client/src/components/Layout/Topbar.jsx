@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Settings, UserCircle2 } from 'lucide-react';
+import { LogOut, Maximize2, Minimize2, RefreshCw, Settings, UserCircle2 } from 'lucide-react';
 import SidebarMenuButton from '@/components/Layout/SidebarMenuButton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useSessionAuth } from '@/context/SessionAuthContext';
 import { MAIN_PROFILE, MAIN_SETTINGS } from '@/lib/dashboardPaths';
 import { BRAND_EYEBROW, BRAND_TAGLINE } from '@/lib/brandCopy';
@@ -29,10 +30,17 @@ export default function Topbar() {
   const navigate = useNavigate();
   const { logout, user } = useSessionAuth();
   const [now, setNow] = useState(() => new Date());
+  const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
   const initials = String(user?.username || 'A')
@@ -41,6 +49,19 @@ export default function Topbar() {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+
+  const refreshApp = () => {
+    window.location.reload();
+  };
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      // Browser or desktop engine may block fullscreen.
+    }
+  };
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-white px-4 shadow-[var(--shadow-card)]">
@@ -52,13 +73,37 @@ export default function Topbar() {
           <p className="text-sm font-semibold leading-snug">{BRAND_TAGLINE}</p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         <div className="hidden text-right sm:block">
           <p className="text-[11px] text-muted-foreground">Timezone: {formatGmtOffset(now)}</p>
           <p className="text-xs font-medium tabular-nums">
             {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </p>
         </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="Refresh" onClick={refreshApp}>
+              <RefreshCw />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Refresh</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="Fullscreen" onClick={toggleFullscreen}>
+              {isFullscreen ? <Minimize2 /> : <Maximize2 />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="Settings" onClick={() => navigate(MAIN_SETTINGS)}>
+              <Settings />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Settings</TooltipContent>
+        </Tooltip>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" className="gap-2 px-2">

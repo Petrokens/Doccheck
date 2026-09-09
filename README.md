@@ -71,6 +71,8 @@ npm run build
 
 Installer output: `desktop/release/DocCheck-AI-Setup-1.0.0.exe`
 
+When you ship a new desktop build, bump `desktop/package.json` `version` and set `APP_VERSION` on the API to the same number (for example `1.1.0`). Users still on an older installer get a center popup with their version and the latest version.
+
 Other targets:
 
 ```bash
@@ -136,3 +138,4 @@ Interactive docs: **Swagger UI** at `http://localhost:5000/api/docs` (OpenAPI JS
 ## Screens
 
 Process, Piping, Pipeline, Civil, Mechanical (rotating/static), Electrical, HVAC, Instrumentation, Telecom, HSE, General, Announcements, History, AI Review, score trends, profile, settings, users, roles, permissions, audit log, system status.
+

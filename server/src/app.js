@@ -12,6 +12,7 @@ const { globalLimiter } = require('./middleware/rateLimits');
 const { isAllowedOrigin } = require('./security/validateEnv');
 const { publicError } = require('./security/httpErrors');
 const { mountSwagger } = require('./docs/swagger');
+const { getAppUpdateInfo } = require('./lib/appVersion');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -37,7 +38,7 @@ app.use(express.urlencoded({ extended: false, limit: '200kb' }));
 app.use(cookieParser());
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, product: 'DocCheck AI' });
+  res.json(getAppUpdateInfo());
 });
 app.use('/api/auth', authRoutes);
 app.use('/api/qaqc', qaqcRoutes);

@@ -281,6 +281,7 @@ function createSplashWindow() {
 
 app.whenReady().then(async () => {
   ipcMain.on('splash-finished', () => finishSplash());
+  ipcMain.handle('app-version', () => app.getVersion());
 
   await loadMainApp();
   const splash = createSplashWindow();

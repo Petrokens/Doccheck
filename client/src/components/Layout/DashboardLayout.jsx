@@ -8,6 +8,7 @@ import { SidebarAccessProvider, SidebarGate } from '@/context/SidebarAccessConte
 import { useSessionAuth } from '@/context/SessionAuthContext';
 import { useDashboardTheme } from '@/lib/useDashboardTheme';
 import { applyRoleTheme, clearRoleTheme, roleThemeFromUser } from '@/lib/theme';
+import { APP_VERSION } from '@/config';
 
 export default function DashboardLayout() {
   useDashboardTheme();
@@ -33,7 +34,7 @@ export default function DashboardLayout() {
               </SidebarGate>
             </main>
             <footer className="border-t border-border bg-white px-4 py-2 text-center text-[11px] text-muted-foreground">
-              DocCheck AI · AI-Powered Engineering Document QA/QC · © 2026
+              DocCheck AI · v{APP_VERSION} · AI-Powered Engineering Document QA/QC · © 2026
             </footer>
           </div>
         </div>
