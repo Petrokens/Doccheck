@@ -42,11 +42,28 @@ function formatCount(value) {
   return Number(value || 0).toLocaleString();
 }
 
+/** Approx USD→INR; override with VITE_USD_TO_INR in client env if needed. */
+const USD_TO_INR = Number(import.meta.env.VITE_USD_TO_INR || 83.5) || 83.5;
+
 function formatUsd(value) {
   const amount = Number(value || 0);
   if (!Number.isFinite(amount) || amount <= 0) return '$0.00';
   if (amount < 0.01) return `$${amount.toFixed(4)}`;
   return `$${amount.toFixed(2)}`;
+}
+
+function formatInr(valueUsd) {
+  const usd = Number(valueUsd || 0);
+  if (!Number.isFinite(usd) || usd <= 0) return '₹0.00';
+  const inr = usd * USD_TO_INR;
+  if (inr < 1) return `₹${inr.toFixed(2)}`;
+  return `₹${inr.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatCostDual(valueUsd) {
+  const amount = Number(valueUsd || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return '—';
+  return `${formatUsd(amount)} · ${formatInr(amount)}`;
 }
 
 function formatTokensCell(value) {
@@ -55,10 +72,7 @@ function formatTokensCell(value) {
 }
 
 function formatCostCell(value) {
-  const amount = Number(value || 0);
-  if (!Number.isFinite(amount) || amount <= 0) return '—';
-  if (amount < 0.01) return `$${amount.toFixed(4)}`;
-  return `$${amount.toFixed(2)}`;
+  return formatCostDual(value);
 }
 
 export default function AuditReports() {
@@ -259,7 +273,12 @@ export default function AuditReports() {
               <Coins className="size-3.5" /> Token cost
             </p>
             <CardTitle className="text-3xl">{loading ? '—' : formatUsd(stats.cost)}</CardTitle>
-            <p className="text-xs text-muted-foreground">Estimated USD from model input/output rates</p>
+            <p className="text-sm font-medium text-foreground/80">
+              {loading ? '—' : formatInr(stats.cost)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Estimated USD + INR (≈ {USD_TO_INR} ₹/$) from model rates
+            </p>
           </CardHeader>
         </Card>
       </div>
@@ -291,7 +310,7 @@ export default function AuditReports() {
                   <TableHead>Role</TableHead>
                   <TableHead className="text-right">Documents processed</TableHead>
                   <TableHead className="text-right">Tokens used</TableHead>
-                  <TableHead className="text-right">Token cost</TableHead>
+                  <TableHead className="text-right">Token cost (USD · INR)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -306,7 +325,16 @@ export default function AuditReports() {
                     <TableCell>{item.role_id == null ? '—' : roleName(roles, item.role_id)}</TableCell>
                     <TableCell className="text-right font-medium">{formatCount(item.documents)}</TableCell>
                     <TableCell className="text-right">{formatTokensCell(item.total_tokens)}</TableCell>
-                    <TableCell className="text-right">{item.token_cost_usd > 0 ? formatUsd(item.token_cost_usd) : '—'}</TableCell>
+                    <TableCell className="text-right">
+                      {item.token_cost_usd > 0 ? (
+                        <div className="leading-tight">
+                          <div className="font-medium">{formatUsd(item.token_cost_usd)}</div>
+                          <div className="text-xs text-muted-foreground">{formatInr(item.token_cost_usd)}</div>
+                        </div>
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
                   </TableRow>
                 )) : (
                   <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No user spend records match.</TableCell></TableRow>

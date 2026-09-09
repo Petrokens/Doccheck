@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom';
 import { useSidebarAccess } from '@/context/SidebarAccessContext';
-import { BRAND_NAME } from '@/lib/brandCopy';
 import brandIcon from '@/assets/logo.png';
 import { buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,6 +19,11 @@ const iconMap = {
   filesearch: FileSearch, filecode: FileText, bookopen: BookOpen, megaphone: Megaphone,
 };
 
+const displayLabels = {
+  'General Discipline': 'General',
+  'AI QC Inbox': 'DocCheck Reports',
+};
+
 export default function Sidebar() {
   const { sections } = useSidebarAccess();
 
@@ -27,10 +31,18 @@ export default function Sidebar() {
     <aside id="app-sidebar" className="flex h-full min-h-0 w-64 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[var(--shadow-card)]">
       <div className="shrink-0 px-4 py-4">
         <div className="flex items-center gap-3">
-          <img src={brandIcon} alt="" className="size-16 shrink-0 rounded-xl object-contain" />
+          <img
+            src={brandIcon}
+            alt=""
+            className="size-9 shrink-0 rounded-md object-contain"
+          />
           <div className="min-w-0">
-            <p className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">QA/QC</p>
-            <p className="text-[1.15rem] font-black tracking-[0.04em] text-sidebar-primary">{BRAND_NAME}</p>
+            <p className="truncate text-[15px] font-bold tracking-tight text-sidebar-primary">
+              DocCheck AI
+            </p>
+            <p className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Engineering QA/QC
+            </p>
           </div>
         </div>
       </div>
@@ -57,7 +69,7 @@ export default function Sidebar() {
                     }
                   >
                     <Icon className="h-4 w-4" />
-                    {item.label === 'General Discipline' ? 'General' : item.label}
+                    {displayLabels[item.label] || item.label}
                   </NavLink>
                 );
               })}

@@ -1,14 +1,15 @@
 import React, { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 const parseInline = (text) => {
   const parts = String(text || '').split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
   return parts.map((part, index) => {
     if (/^\*\*[^*]+\*\*$/.test(part)) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
+      return <strong key={index} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>;
     }
     if (/^`[^`]+`$/.test(part)) {
       return (
-        <code key={index} className="rounded bg-muted px-1 text-foreground">
+        <code key={index} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
           {part.slice(1, -1)}
         </code>
       );
@@ -26,14 +27,106 @@ function splitCells(line) {
     .map((c) => c.trim());
 }
 
+function normalizeRow(cells, colCount) {
+  const row = Array.isArray(cells) ? [...cells] : [];
+  while (row.length < colCount) row.push('');
+  return row.slice(0, colCount);
+}
+
+function columnKind(header) {
+  const h = String(header || '').toLowerCase().trim();
+  if (/^(s\.?\s*no|sno|sr\.?\s*no|#)$/.test(h)) return 'sno';
+  if (/\bid\b|ref\.?|check\s*no|item\s*no|^#/.test(h)) return 'id';
+  if (/severity|priority|category|class/.test(h)) return 'severity';
+  if (/^status$|result|verdict/.test(h)) return 'status';
+  if (/^score$|pts|points/.test(h)) return 'score';
+  if (/^tag$|system|discipline/.test(h)) return 'tag';
+  if (/remark|finding|comment|observation|note/.test(h)) return 'remarks';
+  if (/description|question|requirement|check\s*item|criteria/.test(h)) return 'description';
+  return 'default';
+}
+
+function thClass(kind) {
+  const base = 'border-b border-border px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground';
+  switch (kind) {
+    case 'sno':
+      return cn(base, 'w-[3.5rem] whitespace-nowrap text-center');
+    case 'id':
+      return cn(base, 'w-[6.5rem] whitespace-nowrap');
+    case 'severity':
+    case 'status':
+    case 'score':
+    case 'tag':
+      return cn(base, 'w-[6rem] whitespace-nowrap text-center');
+    case 'description':
+      return cn(base, 'min-w-[14rem]');
+    case 'remarks':
+      return cn(base, 'min-w-[12rem]');
+    default:
+      return cn(base, 'min-w-[8rem]');
+  }
+}
+
+function tdClass(kind) {
+  const base = 'border-b border-border/70 px-3 py-2.5 align-top text-[12.5px] leading-snug text-foreground';
+  switch (kind) {
+    case 'sno':
+      return cn(base, 'whitespace-nowrap text-center tabular-nums text-muted-foreground');
+    case 'id':
+      return cn(base, 'whitespace-nowrap font-mono text-[11px] font-medium text-primary');
+    case 'severity':
+    case 'status':
+    case 'score':
+    case 'tag':
+      return cn(base, 'whitespace-nowrap text-center');
+    case 'description':
+    case 'remarks':
+      return cn(base, 'break-words');
+    default:
+      return cn(base, 'break-words');
+  }
+}
+
+function StatusPill({ value, kind }) {
+  const raw = String(value || '').trim();
+  if (!raw || (kind !== 'status' && kind !== 'severity')) {
+    return <>{parseInline(raw)}</>;
+  }
+  const key = raw.toLowerCase();
+  let tone = 'bg-muted text-foreground';
+  if (kind === 'severity') {
+    if (/critical|high/.test(key)) tone = 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300';
+    else if (/major|medium/.test(key)) tone = 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300';
+    else if (/minor|low/.test(key)) tone = 'bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-300';
+  } else if (kind === 'status') {
+    if (/^ok$|pass|compliant|complete|yes/.test(key)) tone = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300';
+    else if (/not\s*ok|fail|non.?compliant|no\b|reject/.test(key)) tone = 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300';
+    else if (/partial|hold|n\/?a|open|review/.test(key)) tone = 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300';
+  }
+  return (
+    <span className={cn('inline-flex min-w-[4.25rem] items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-semibold', tone)}>
+      {raw}
+    </span>
+  );
+}
+
 export default function ReportMarkdownView({ markdown, variant = 'document' }) {
   const blocks = useMemo(() => {
     const lines = String(markdown || '').split(/\r?\n/);
     const out = [];
     let i = 0;
+    let listBuffer = [];
+
+    const flushList = () => {
+      if (!listBuffer.length) return;
+      out.push({ type: 'ul', items: listBuffer });
+      listBuffer = [];
+    };
+
     while (i < lines.length) {
       const line = lines[i];
       if (/^\s*\|.*\|\s*$/.test(line) && /^\s*\|?(\s*:?-{3,}:?\s*\|)+\s*$/.test(lines[i + 1] || '')) {
+        flushList();
         const header = splitCells(line);
         i += 2;
         const rows = [];
@@ -48,20 +141,36 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
         out.push({ type: 'table', header, rows });
         continue;
       }
-      if (/^###\s+/.test(line)) out.push({ type: 'h3', text: line.replace(/^###\s+/, '') });
-      else if (/^##\s+/.test(line)) out.push({ type: 'h2', text: line.replace(/^##\s+/, '') });
-      else if (/^#\s+/.test(line)) out.push({ type: 'h1', text: line.replace(/^#\s+/, '') });
-      else if (/^\s*[-*]\s+/.test(line)) out.push({ type: 'li', text: line.replace(/^\s*[-*]\s+/, '') });
-      else if (line.trim()) out.push({ type: 'p', text: line });
-      else out.push({ type: 'br' });
+      if (/^\s*---+\s*$/.test(line)) {
+        flushList();
+        out.push({ type: 'hr' });
+      } else if (/^###\s+/.test(line)) {
+        flushList();
+        out.push({ type: 'h3', text: line.replace(/^###\s+/, '') });
+      } else if (/^##\s+/.test(line)) {
+        flushList();
+        out.push({ type: 'h2', text: line.replace(/^##\s+/, '') });
+      } else if (/^#\s+/.test(line)) {
+        flushList();
+        out.push({ type: 'h1', text: line.replace(/^#\s+/, '') });
+      } else if (/^\s*[-*]\s+/.test(line)) {
+        listBuffer.push(line.replace(/^\s*[-*]\s+/, ''));
+      } else if (line.trim()) {
+        flushList();
+        out.push({ type: 'p', text: line });
+      } else {
+        flushList();
+        out.push({ type: 'br' });
+      }
       i += 1;
     }
+    flushList();
     return out;
   }, [markdown]);
 
   const shell =
     variant === 'document'
-      ? 'prose-report space-y-3 text-sm text-foreground'
+      ? 'prose-report mx-auto max-w-none space-y-4 rounded-lg border border-border/80 bg-card px-5 py-5 text-sm text-foreground shadow-sm sm:px-6 sm:py-6'
       : 'space-y-2 text-sm';
 
   return (
@@ -69,51 +178,78 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
       {blocks.map((block, index) => {
         if (block.type === 'h1') {
           return (
-            <h1 key={index} className="text-xl font-bold text-primary">
+            <h1 key={index} className="border-b border-border pb-2 text-xl font-bold tracking-tight text-primary">
               {parseInline(block.text)}
             </h1>
           );
         }
         if (block.type === 'h2') {
           return (
-            <h2 key={index} className="text-lg font-semibold text-foreground">
+            <h2 key={index} className="mt-2 border-b border-border/70 pb-1.5 text-base font-semibold tracking-tight text-foreground">
               {parseInline(block.text)}
             </h2>
           );
         }
         if (block.type === 'h3') {
           return (
-            <h3 key={index} className="text-base font-semibold">
+            <h3 key={index} className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
               {parseInline(block.text)}
             </h3>
           );
         }
-        if (block.type === 'li') {
+        if (block.type === 'ul') {
           return (
-            <li key={index} className="ml-5 list-disc">
-              {parseInline(block.text)}
-            </li>
+            <ul key={index} className="space-y-1.5 pl-5">
+              {block.items.map((item, li) => (
+                <li key={li} className="list-disc leading-relaxed marker:text-primary/70">
+                  {parseInline(item)}
+                </li>
+              ))}
+            </ul>
           );
         }
+        if (block.type === 'hr') {
+          return <hr key={index} className="border-border" />;
+        }
         if (block.type === 'table') {
+          const hasSno = block.header.some((h) => columnKind(h) === 'sno');
+          const headerSrc = hasSno ? block.header : ['S.No', ...block.header];
+          const rowsSrc = hasSno
+            ? block.rows
+            : block.rows.map((row, ri) => [String(ri + 1), ...row]);
+          const kinds = headerSrc.map(columnKind);
+          const colCount = Math.max(headerSrc.length, ...rowsSrc.map((r) => r.length), 1);
+          const header = normalizeRow(headerSrc, colCount);
+          while (kinds.length < colCount) kinds.push('default');
           return (
-            <div key={index} className="overflow-x-auto rounded-[var(--radius)] border border-border">
-              <table className="min-w-full text-left text-xs">
-                <thead className="bg-muted text-foreground">
+            <div key={index} className="overflow-x-auto rounded-lg border border-border bg-background">
+              <table className="w-full min-w-[44rem] table-fixed border-collapse text-left">
+                <colgroup>
+                  {kinds.map((kind, ci) => {
+                    let width = '18%';
+                    if (kind === 'sno') width = '5%';
+                    else if (kind === 'id') width = '9%';
+                    else if (kind === 'severity' || kind === 'status' || kind === 'score' || kind === 'tag') width = '10%';
+                    else if (kind === 'description') width = '28%';
+                    else if (kind === 'remarks') width = '24%';
+                    return <col key={ci} style={{ width }} />;
+                  })}
+                </colgroup>
+                <thead className="bg-muted/80">
                   <tr>
-                    {block.header.map((cell, ci) => (
-                      <th key={ci} className="px-3 py-2 font-semibold">
+                    {header.map((cell, ci) => (
+                      <th key={ci} className={thClass(kinds[ci])}>
                         {parseInline(cell)}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {block.rows.map((row, ri) => (
-                    <tr key={ri} className="odd:bg-card even:bg-muted/60">
-                      {row.map((cell, ci) => (
-                        <td key={ci} className="px-3 py-2 align-top">
-                          {parseInline(cell)}
+                  {rowsSrc.map((row, ri) => (
+                    <tr key={ri} className="odd:bg-card even:bg-muted/35">
+                      {normalizeRow(row, colCount).map((cell, ci) => (
+                        <td key={ci} className={tdClass(kinds[ci])}>
+                          <StatusPill value={cell} kind={kinds[ci]} />
                         </td>
                       ))}
                     </tr>
@@ -123,9 +259,9 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
             </div>
           );
         }
-        if (block.type === 'br') return <div key={index} className="h-2" />;
+        if (block.type === 'br') return <div key={index} className="h-1.5" />;
         return (
-          <p key={index} className="leading-relaxed">
+          <p key={index} className="leading-relaxed text-[13px] text-foreground/90">
             {parseInline(block.text)}
           </p>
         );

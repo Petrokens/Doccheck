@@ -2,13 +2,39 @@ const path = require('path');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const XLSX = require('xlsx');
-const { createWorker } = require('tesseract.js');
+const { extractPdfAdvanced, extractImageAdvanced } = require('./advancedOcrService');
 
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.tif', '.tiff', '.bmp']);
 
-async function extractPdfText(buffer) {
+async function extractPdfNativeFallback(buffer, onProgress) {
+  const emit = typeof onProgress === 'function' ? onProgress : () => {};
   try {
-    const result = await pdfParse(buffer);
+    let pageCount = 0;
+    const result = await pdfParse(buffer, {
+      pagerender: async (pageData) => {
+        pageCount += 1;
+        const textContent = await pageData.getTextContent({
+          normalizeWhitespace: true,
+          disableCombineTextItems: false,
+        });
+        let lastY;
+        let text = '';
+        for (const item of textContent.items || []) {
+          if (lastY === item.transform[5] || lastY === undefined) text += item.str;
+          else text += `\n${item.str}`;
+          lastY = item.transform[5];
+        }
+        const preview = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 90);
+        emit(
+          preview
+            ? `OCR page ${pageCount}: ${preview}${text.length > 90 ? '…' : ''}`
+            : `OCR page ${pageCount}: (image / low-text page)`,
+        );
+        return text;
+      },
+    });
+    const numpages = result.numpages || pageCount || 0;
+    if (numpages) emit(`PDF page scan complete (${numpages} page${numpages === 1 ? '' : 's'})`);
     return String(result.text || '').trim();
   } catch {
     return '';
@@ -36,16 +62,6 @@ function extractSpreadsheet(buffer) {
   }
 }
 
-async function ocrImage(buffer) {
-  const worker = await createWorker('eng');
-  try {
-    const { data } = await worker.recognize(buffer);
-    return String(data?.text || '').trim();
-  } finally {
-    await worker.terminate();
-  }
-}
-
 async function extractTextFromFile(file, onProgress) {
   const emit = typeof onProgress === 'function' ? onProgress : () => {};
   const name = file.originalname || 'document';
@@ -66,15 +82,23 @@ async function extractTextFromFile(file, onProgress) {
     return extractSpreadsheet(buffer);
   }
   if (IMAGE_EXT.has(ext)) {
-    emit(`OCR image ${name}`);
-    return ocrImage(buffer);
+    try {
+      return await extractImageAdvanced(buffer, name, emit);
+    } catch (error) {
+      emit(`Advanced image OCR failed (${error?.message || error}).`);
+      return '';
+    }
   }
   if (ext === '.pdf') {
-    emit(`Extracting PDF text ${name}`);
-    const native = await extractPdfText(buffer);
-    if (native.length >= 80) return native;
-    emit(`PDF has little native text — OCR may be limited without page rasterization`);
-    return native;
+    emit(`Starting advanced OCR + image analysis for PDF ${name}`);
+    try {
+      const advanced = await extractPdfAdvanced(buffer, emit);
+      if (String(advanced || '').trim().length >= 40) return advanced;
+      emit('Advanced OCR returned little text — trying native PDF parser fallback…');
+    } catch (error) {
+      emit(`Advanced OCR pipeline error (${error?.message || error}). Falling back to native PDF text…`);
+    }
+    return extractPdfNativeFallback(buffer, emit);
   }
   emit(`Reading ${name} as UTF-8`);
   return buffer.toString('utf8');

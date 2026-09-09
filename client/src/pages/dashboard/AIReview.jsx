@@ -204,7 +204,7 @@ export default function AIReview() {
               <Printer /> Print PDF
             </Button>
           ) : null}
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/30 p-3 sm:p-4">
             <ReportMarkdownView markdown={report?.report_markdown} />
           </div>
         </DialogContent>

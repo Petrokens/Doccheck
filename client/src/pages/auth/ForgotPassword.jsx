@@ -3,13 +3,14 @@ import { sendForgotPasswordEmail } from '@/services/authService';
 import { publicApiError } from '@/lib/uploadSafety';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail } from 'lucide-react';
 import AuthLayout from './AuthLayout';
-import logoMark from '@/assets/logo.png';
-import { BRAND_COPYRIGHT, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brandCopy';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+const AUTH_INPUT =
+  'h-11 bg-[#f4f7fb] text-slate-900 placeholder:text-slate-400 dark:bg-[#f4f7fb] dark:text-slate-900 dark:placeholder:text-slate-400';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -18,27 +19,13 @@ export default function ForgotPasswordPage() {
   return (
     <AuthLayout>
       <div className="w-full">
-        <div className="flex items-center gap-3">
-          <img
-            src={logoMark}
-            alt={BRAND_NAME}
-            className="h-24 w-24 shrink-0 rounded-xl bg-white object-contain p-0.5 shadow-sm"
-          />
-          <div>
-            <p className="font-heading text-2xl font-bold tracking-[0.04em] text-foreground">{BRAND_NAME}</p>
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              {BRAND_TAGLINE}
-            </p>
-          </div>
-        </div>
-
-        <h1 className="mt-10 font-heading text-3xl font-semibold tracking-wide">Forgot password</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="font-heading text-[1.65rem] font-semibold tracking-wide text-foreground">Forgot password</h1>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           We will send a reset link if that email is registered.
         </p>
 
         <form
-          className="mt-8 space-y-4"
+          className="mt-6 space-y-4"
           onSubmit={async (e) => {
             e.preventDefault();
             setLoading(true);
@@ -53,26 +40,29 @@ export default function ForgotPasswordPage() {
           }}
         >
           <div className="space-y-1.5">
-            <Label htmlFor="reset-email">Email</Label>
-            <Input
-              id="reset-email"
-              className="h-11 bg-muted"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-            />
+            <Label htmlFor="reset-email" className="text-slate-700">
+              Email
+            </Label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="reset-email"
+                className={`${AUTH_INPUT} pl-10`}
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="nina.v@example.com"
+              />
+            </div>
           </div>
-          <Button type="submit" disabled={loading} size="lg" className="h-11 w-full">
+          <Button type="submit" disabled={loading} size="lg" className="h-11 w-full text-[15px] font-semibold">
             {loading ? <Loader2 className="animate-spin" /> : 'Send reset link'}
           </Button>
-          <Button asChild variant="link" className="w-full">
+          <Button asChild variant="link" className="h-auto w-full px-0 text-slate-600">
             <Link to="/login">Back to login</Link>
           </Button>
         </form>
-
-        <p className="mt-10 text-[11px] text-muted-foreground">{BRAND_COPYRIGHT}</p>
       </div>
     </AuthLayout>
   );

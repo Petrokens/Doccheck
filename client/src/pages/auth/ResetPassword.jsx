@@ -3,13 +3,14 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { resetPassword } from '@/services/authService';
 import { publicApiError } from '@/lib/uploadSafety';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LockKeyhole } from 'lucide-react';
 import AuthLayout from './AuthLayout';
-import logoMark from '@/assets/logo.png';
-import { BRAND_COPYRIGHT, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brandCopy';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+const AUTH_INPUT =
+  'h-11 bg-[#f4f7fb] text-slate-900 placeholder:text-slate-400 dark:bg-[#f4f7fb] dark:text-slate-900 dark:placeholder:text-slate-400';
 
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
@@ -22,27 +23,13 @@ export default function ResetPasswordPage() {
   return (
     <AuthLayout>
       <div className="w-full">
-        <div className="flex items-center gap-3">
-          <img
-            src={logoMark}
-            alt={BRAND_NAME}
-            className="h-24 w-24 shrink-0 rounded-xl bg-white object-contain p-0.5 shadow-sm"
-          />
-          <div>
-            <p className="font-heading text-2xl font-bold tracking-[0.04em] text-foreground">{BRAND_NAME}</p>
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              {BRAND_TAGLINE}
-            </p>
-          </div>
-        </div>
-
-        <h1 className="mt-10 font-heading text-3xl font-semibold tracking-wide">Reset password</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="font-heading text-[1.65rem] font-semibold tracking-wide text-foreground">Reset password</h1>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           Use 12+ characters with upper, lower, number, and symbol.
         </p>
 
         <form
-          className="mt-8 space-y-4"
+          className="mt-6 space-y-4"
           onSubmit={async (e) => {
             e.preventDefault();
             if (!token) {
@@ -66,40 +53,48 @@ export default function ResetPasswordPage() {
           }}
         >
           <div className="space-y-1.5">
-            <Label htmlFor="new-password">New password</Label>
-            <Input
-              id="new-password"
-              type="password"
-              required
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="New password"
-              className="h-11 bg-muted"
-            />
+            <Label htmlFor="new-password" className="text-slate-700">
+              New password
+            </Label>
+            <div className="relative">
+              <LockKeyhole className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="new-password"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="New password"
+                className={`${AUTH_INPUT} pl-10`}
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="confirm-password">Confirm password</Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              required
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Confirm password"
-              className="h-11 bg-muted"
-            />
+            <Label htmlFor="confirm-password" className="text-slate-700">
+              Confirm password
+            </Label>
+            <div className="relative">
+              <LockKeyhole className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="confirm-password"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Confirm password"
+                className={`${AUTH_INPUT} pl-10`}
+              />
+            </div>
           </div>
-          <Button type="submit" disabled={loading} size="lg" className="h-11 w-full">
+          <Button type="submit" disabled={loading} size="lg" className="h-11 w-full text-[15px] font-semibold">
             {loading ? <Loader2 className="animate-spin" /> : 'Update password'}
           </Button>
-          <Button asChild variant="link" className="w-full">
+          <Button asChild variant="link" className="h-auto w-full px-0 text-slate-600">
             <Link to="/login">Back to login</Link>
           </Button>
         </form>
-
-        <p className="mt-10 text-[11px] text-muted-foreground">{BRAND_COPYRIGHT}</p>
       </div>
     </AuthLayout>
   );

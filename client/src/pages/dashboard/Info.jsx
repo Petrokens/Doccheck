@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import {
-  BookOpen,
   CheckCircle2,
   ClipboardCheck,
   FileSearch,
@@ -8,9 +7,8 @@ import {
   Library,
   Printer,
   ShieldCheck,
-  UploadCloud,
 } from 'lucide-react';
-import { QA_QC_BASE, QA_QC_PROCESS } from '@/lib/dashboardPaths';
+import { QA_QC_BASE } from '@/lib/dashboardPaths';
 import {
   BRAND_CHECK_1,
   BRAND_CHECK_2,
@@ -75,7 +73,7 @@ const SCORES = [
   ['Technical Score', 'Check-2 technical questions'],
   ['Rule Score', 'Applicable rules from the library'],
   ['Interface Score', 'Cross-file consistency when a support document is attached'],
-  ['Final QC Score', 'Weighted percentage used for History and PDF'],
+  ['Final QC Score', 'Section 7.3: (QA × 25%) + (Technical × 35%) + (Rule × 30%) + (Interface × 10%)'],
 ];
 
 const VERDICTS = [
@@ -91,7 +89,7 @@ const REPORT_SECTIONS = [
   'Check-1 completeness table',
   'Check-2 technical review table',
   'Rule engine results',
-  'Consolidated scoring and final verdict',
+  'Consolidated scoring (7.1 components, 7.2 formula, 7.3 Final QC Score) and final verdict',
   'Findings by priority (Critical / Major / Minor)',
 ];
 
@@ -117,20 +115,6 @@ export default function Info() {
             This product is document quality assurance only — it does not replace qualified engineering judgment.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link to={QA_QC_PROCESS}>
-              <UploadCloud />
-              Start a QA/QC review
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to={`${QA_QC_BASE}/history`}>
-              <BookOpen />
-              Open History
-            </Link>
-          </Button>
-        </CardContent>
       </Card>
 
       <section>
@@ -266,7 +250,7 @@ export default function Info() {
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               <li>Single-document QA/QC with optional support file</li>
               <li>OCR for scanned PDFs, drawings, and images</li>
-              <li>Stored reports, History, AI QC Inbox, and PDF export</li>
+              <li>Stored reports, History, DocCheck Reports, and PDF export</li>
               <li>Role-based access for users, roles, and audit log</li>
             </ul>
           </div>

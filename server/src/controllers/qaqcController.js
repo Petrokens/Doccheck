@@ -2,6 +2,11 @@ const crypto = require('crypto');
 const { extractTextFromFile } = require('../services/documentTextService');
 const { generateProcessQcReport } = require('../services/qaqcAiService');
 const { streamProcessReportPdf } = require('../services/processReportPdfService');
+const {
+  applyConsolidatedScoring,
+  extractScoreFromMarkdown,
+  withCorrectedScoring,
+} = require('../services/qcScoring');
 const processReportRepo = require('../db/repositories/processReportRepository');
 const userRepo = require('../db/repositories/userRepository');
 const { mapWithConcurrency } = require('../utils/asyncPool');
@@ -22,14 +27,6 @@ function toHumanDateTime(iso) {
   const day = String(dt.getDate()).padStart(2, '0');
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${day}-${months[dt.getMonth()]}-${dt.getFullYear()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')} UTC`;
-}
-
-function extractScoreFromMarkdown(markdown) {
-  const match = String(markdown || '').match(/(?:final\s+qc\s+score|qc\s+score|final score)[^\d]{0,24}(\d{1,3})/i);
-  if (!match) return null;
-  const score = Number(match[1]);
-  if (Number.isNaN(score)) return null;
-  return Math.max(0, Math.min(score, 100));
 }
 
 function inferReportCategory(documentType, override) {
@@ -89,7 +86,7 @@ async function buildProcessReport({
   if (!mains.length) throw new Error('At least one main project document is required.');
 
   const reportCategory = inferReportCategory(documentType, reportCategoryOverride);
-  emit(`Full extraction mode (parallel up to ${EXTRACTION_CONCURRENCY} files).`);
+  emit(`Full extraction mode with advanced OCR/vision (parallel up to ${EXTRACTION_CONCURRENCY} files).`);
 
   const extractOne = async (file, role, index, total) => {
     emit(`Extracting text from ${role} document ${index + 1}/${total}: ${file.originalname}...`);
@@ -136,9 +133,13 @@ async function buildProcessReport({
     clearInterval(timer);
   }
   emit('AI response received. Building structured report...');
+  emit('Computing Section 7.3 Final QC Score from Check-1, Check-2, Rule, and Interface weights...');
 
   const generatedAtIso = new Date().toISOString();
   const formatList = (names) => (names.length ? names.map((n, i) => `${i + 1}. ${n}`).join('\n') : 'Not provided');
+  const scoredMarkdown = applyConsolidatedScoring(sanitizeMarkdown(String(aiMarkdown || '').trim()), {
+    hasSupportDocument: supports.length > 0,
+  });
   const report_markdown = [
     '# PETROLENS QA/QC REPORT ENGINE',
     '# WITH INTEGRATED 4000-RULE ENGINEERING QA RULE',
@@ -155,7 +156,7 @@ async function buildProcessReport({
     '',
     '---',
     '',
-    `${sanitizeMarkdown(String(aiMarkdown || '').trim())}\n\n${footerBlock(generatedAtIso)}`,
+    `${scoredMarkdown}\n\n${footerBlock(generatedAtIso)}`,
     '',
   ].join('\n');
 
@@ -203,7 +204,9 @@ function mapHistoryRows(rows, userMap) {
     created_at: item.created_at,
     updated_at: item.updated_at,
     status: 'Completed',
-    score: extractScoreFromMarkdown(item.report_markdown),
+    score: extractScoreFromMarkdown(
+      applyConsolidatedScoring(item.report_markdown, { hasSupportDocument: item.support_document_name }),
+    ),
     workflow: 'qaqc',
     document_count: countDocuments(item.main_document_name, item.support_document_name),
     prompt_tokens: Number(item.prompt_tokens || 0),
@@ -298,7 +301,7 @@ exports.getProcessReportById = async (req, res) => {
   if (!isReportId(id)) return publicError(res, 400, 'Invalid report id');
   const record = memoryCache.get(id) || (await processReportRepo.findById(id));
   if (!record || !canAccessReport(req, record)) return publicError(res, 404, 'Report not found');
-  return res.json({ report: record });
+  return res.json({ report: withCorrectedScoring(record) });
 };
 
 exports.getReportDashboardStats = async (req, res) => {
@@ -403,5 +406,5 @@ exports.downloadProcessReport = async (req, res) => {
   const record = memoryCache.get(id) || (await processReportRepo.findById(id));
   if (!record || !canAccessReport(req, record)) return publicError(res, 404, 'Report not found');
   audit('report.download', { id, user_id: req.user?.user_id });
-  streamProcessReportPdf(res, record);
+  streamProcessReportPdf(res, withCorrectedScoring(record));
 };

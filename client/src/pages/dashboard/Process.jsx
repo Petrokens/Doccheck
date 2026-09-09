@@ -44,7 +44,8 @@ import {
 
 const DEFAULT_INITIAL_LOGS = [
   'DocCheck AI Engine Ready',
-  'OCR scanner ready for scanned PDFs, drawings, and images.',
+  'Advanced OCR online: MuPDF raster + Tesseract LSTM + Sharp enhance.',
+  'Vision image analysis enabled for scanned pages and drawings.',
   'Awaiting project document upload.',
 ];
 
@@ -385,7 +386,12 @@ export default function Process({
 
         {mainDocument ? (
           <div className="col-span-12">
-            <DocumentImageReaderSection mainDocument={mainDocument} logs={logs} />
+            <DocumentImageReaderSection
+              mainDocument={mainDocument}
+              supportDocument={supportDocument}
+              logs={logs}
+              isGenerating={isGenerating}
+            />
           </div>
         ) : null}
       </div>

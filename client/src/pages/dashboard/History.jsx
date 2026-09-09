@@ -378,6 +378,7 @@ export default function History({ title = 'QA/QC History' }) {
                     aria-label="Select all reports"
                   />
                 </TableHead>
+                <TableHead className="w-14">S.No</TableHead>
                 <TableHead>Document</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Checked by</TableHead>
@@ -387,7 +388,7 @@ export default function History({ title = 'QA/QC History' }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((entry) => {
+              {filtered.map((entry, index) => {
                 const meta = scoreMeta(entry.score);
                 return (
                   <TableRow key={entry.id}>
@@ -398,6 +399,7 @@ export default function History({ title = 'QA/QC History' }) {
                         aria-label={`Select ${entry.file_name}`}
                       />
                     </TableCell>
+                    <TableCell className="tabular-nums text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="max-w-[280px]">
                       <p className="truncate font-medium">{entry.file_name}</p>
                       <p className="truncate text-xs text-muted-foreground">{entry.report_title}</p>
@@ -491,7 +493,7 @@ export default function History({ title = 'QA/QC History' }) {
               <Printer /> Print PDF
             </Button>
           ) : null}
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/30 p-3 sm:p-4">
             {reportLoading && !report ? (
               <p className="text-sm text-muted-foreground">Loading report…</p>
             ) : (

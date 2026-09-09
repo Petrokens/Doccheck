@@ -11,11 +11,11 @@ function generateDummyQaQcReport({ documentType, mainDocumentName, supportDocume
 ## SECTION 2: EXECUTIVE SUMMARY DASHBOARD
 | Metric | Value |
 | --- | --- |
-| QA Score | 78.0 |
-| Technical Score | 74.0 |
-| Rule Score | 80.0 |
-| Interface Score | 76.0 |
-| Final QC Score | 77 |
+| QA Score | 58.3 |
+| Technical Score | 75.0 |
+| Rule Score | 75.0 |
+| Interface Score | 100.0 |
+| Final QC Score | 73 |
 
 ## SECTION 4: CHECK-1 QA/QC FIXED CHECKS
 | Check ID | Description | Status | Score | Remarks |
@@ -37,6 +37,25 @@ Applicable rules sampled from the 4,000-rule library based on document type **${
 | --- | --- | --- | --- | --- |
 | R-1001 | Document control completeness | Major | Partial | Revision/approval gaps |
 | R-2140 | Spec vs design consistency | Major | Partial | Cross-check support file |
+
+## SECTION 7: CONSOLIDATED SCORING
+### 7.1 Component Scores
+| Component | Score (%) | Weight | Weighted Score |
+| --- | --- | --- | --- |
+| QA Score (Check-1) | 58.3 | 25% | 14.58 |
+| Technical Score (Check-2) | 75.0 | 35% | 26.25 |
+| Rule Score | 75.0 | 30% | 22.50 |
+| Interface Score | 100.0 | 10% | 10.00 |
+
+### 7.2 Weighting Formula
+Final QC Score = (QA Score × 0.25) + (Technical Score × 0.35) + (Rule Score × 0.30) + (Interface Score × 0.10)
+
+### 7.3 Final QC Score
+**73%**
+
+| Item | Value |
+| --- | --- |
+| Final QC Score | 73% |
 
 ## SECTION 8: FINAL VERDICT AND ACTIONS
 **Status:** Approved with Comments

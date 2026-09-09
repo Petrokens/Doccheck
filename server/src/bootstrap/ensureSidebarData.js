@@ -26,7 +26,7 @@ const ITEMS = [
   { id: 29, section_id: 2, label: 'Announcements', path: '/dashboard/announcements', icon_name: 'Megaphone', display_order: 0 },
   { id: 13, section_id: 2, label: 'History', path: `${QA}/history`, icon_name: 'Clock', display_order: 1 },
   { id: 14, section_id: 2, label: 'Info', path: '/dashboard/info', icon_name: 'Info', display_order: 3 },
-  { id: 15, section_id: 3, label: 'AI QC Inbox', path: `${QA}/ai-review`, icon_name: 'Brain', display_order: 1 },
+  { id: 15, section_id: 3, label: 'DocCheck Reports', path: `${QA}/ai-review`, icon_name: 'Brain', display_order: 1 },
   { id: 22, section_id: 7, label: 'Master Admin', path: '/dashboard/users', icon_name: 'Users', display_order: 1 },
   { id: 23, section_id: 7, label: 'Role Management', path: '/dashboard/roles', icon_name: 'Key', display_order: 2 },
   { id: 24, section_id: 7, label: 'Access Control', path: '/dashboard/permissions', icon_name: 'Lock', display_order: 3 },
