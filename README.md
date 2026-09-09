@@ -1,8 +1,17 @@
-# Petrolenz QA/QC
+# DocCheck AI
 
-Standalone **document quality assurance** product. Login, upload an engineering deliverable, run Check-1 / Check-2 / rule analysis, store a scored report, and export PDF.
+**Intelligent Engineering Document Quality Assurance**
 
-This is a new project (frontend, backend, APIs, database). It does not include TBE, Cross-Doc, constructability, revision impact, or copilots.
+AI-Powered Engineering Document QA/QC. Login, upload an engineering deliverable, run Check-1 / Check-2 / rule analysis, store a scored report, and export PDF.
+
+**Flow:** Upload → Analyze → Validate → Score → Report
+
+- **Check-1:** Standard Completeness  
+- **Check-2:** Technical Review  
+- **4,000+ Rules:** Engineering Quality & Compliance  
+- **Output:** Scored QA/QC Report + PDF
+
+This is a standalone document quality assurance product. It does not include TBE, Cross-Doc, constructability, revision impact, or copilots.
 
 ## Stack
 
@@ -15,11 +24,11 @@ This is a new project (frontend, backend, APIs, database). It does not include T
 
 ## Run locally
 
-Use a **separate PostgreSQL database** from any other Petrolenz platform.
+Use a **separate PostgreSQL database** for DocCheck AI.
 
 ```bash
 # 1. Database
-psql -U postgres -d petrolenz_qaqc -f server/sql/schema.sql
+psql -U postgres -d doccheck_qaqc -f server/sql/schema.sql
 
 # 2. Server
 cd server
@@ -62,7 +71,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your@email.com
 SMTP_PASS=your-app-password
-SMTP_FROM=Petrolenz QA/QC <noreply@yourdomain.com>
+SMTP_FROM=DocCheck AI <noreply@yourdomain.com>
 ```
 
 Use port `465` with `SMTP_SECURE=true` if your provider requires SSL. Resend and other API mail providers are not used.

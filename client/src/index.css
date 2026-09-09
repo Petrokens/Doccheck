@@ -63,7 +63,7 @@
 :root,
 :root[data-role-theme='user'] {
   /* Engineer / user — soft sky light */
-  --dash-bg: #f7f9fc;
+  --dash-bg: #ffffff;
   --dash-surface: #ffffff;
   --dash-surface-elevated: #eef4fb;
   --dash-border: #d5e0ef;
@@ -72,7 +72,7 @@
   --dash-text-muted: #5b6f8c;
   --dash-console-bg: #0b1220;
   --dash-console-text: #86efac;
-  --background: #f7f9fc;
+  --background: #ffffff;
   --foreground: #14233a;
   --card: #ffffff;
   --card-foreground: #14233a;
@@ -111,7 +111,7 @@
 
 /* Master Admin — soft teal / slate light */
 :root[data-role-theme='master'] {
-  --dash-bg: #f5faf8;
+  --dash-bg: #ffffff;
   --dash-surface: #ffffff;
   --dash-surface-elevated: #e8f4ef;
   --dash-border: #c9e0d9;
@@ -120,7 +120,7 @@
   --dash-text-muted: #4f6f68;
   --dash-console-bg: #0b1220;
   --dash-console-text: #86efac;
-  --background: #f5faf8;
+  --background: #ffffff;
   --foreground: #14302c;
   --card: #ffffff;
   --card-foreground: #14302c;

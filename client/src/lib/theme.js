@@ -37,5 +37,5 @@ export function applyDocumentTheme(mode = getThemeMode()) {
 export function setThemeMode(mode) {
   localStorage.setItem(THEME_STORAGE_KEY, mode);
   applyDocumentTheme(mode);
-  window.dispatchEvent(new CustomEvent('petrolenz-theme-change', { detail: { mode } }));
+  window.dispatchEvent(new CustomEvent('doccheck-theme-change', { detail: { mode } }));
 }

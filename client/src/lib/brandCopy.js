@@ -1,2 +1,13 @@
-export const BRAND_EYEBROW = 'Petrolenz QA/QC';
-export const BRAND_TAGLINE = 'AI-Powered Engineering Document Assurance';
+export const BRAND_NAME = 'DocCheck AI';
+export const BRAND_NAME_SHORT = 'DocCheck';
+export const BRAND_EYEBROW = 'DocCheck AI';
+export const BRAND_TAGLINE = 'AI-Powered Engineering Document QA/QC';
+export const BRAND_SUBTITLE = 'Intelligent Engineering Document Quality Assurance';
+export const BRAND_PIPELINE = 'Upload → Analyze → Validate → Score → Report';
+export const BRAND_CHECK_1 = 'Check-1: Standard Completeness';
+export const BRAND_CHECK_2 = 'Check-2: Technical Review';
+export const BRAND_RULES = '4,000+ Rules: Engineering Quality & Compliance';
+export const BRAND_OUTPUT = 'Output: Scored QA/QC Report + PDF';
+export const BRAND_COPYRIGHT = '© 2026 DocCheck AI. All rights reserved.';
+export const BRAND_PRODUCT = 'DocCheck AI';
+export const BRAND_WORKSPACE = 'QA / QC Workspace';

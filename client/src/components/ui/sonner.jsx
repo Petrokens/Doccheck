@@ -12,13 +12,13 @@ const Toaster = ({
 
   useEffect(() => {
     const sync = () => setTheme(resolveIsDark() ? "dark" : "light")
-    window.addEventListener("petrolenz-theme-change", sync)
+    window.addEventListener("doccheck-theme-change", sync)
     const media = window.matchMedia("(prefers-color-scheme: dark)")
     media.addEventListener("change", sync)
     const observer = new MutationObserver(sync)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
     return () => {
-      window.removeEventListener("petrolenz-theme-change", sync)
+      window.removeEventListener("doccheck-theme-change", sync)
       media.removeEventListener("change", sync)
       observer.disconnect()
     }

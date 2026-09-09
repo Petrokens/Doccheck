@@ -1,9 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('petrolenzDesktop', {
+contextBridge.exposeInMainWorld('doccheckDesktop', {
   isDesktop: true,
 });
 
-contextBridge.exposeInMainWorld('petrolenzSplash', {
+contextBridge.exposeInMainWorld('doccheckSplash', {
   finished: () => ipcRenderer.send('splash-finished'),
 });

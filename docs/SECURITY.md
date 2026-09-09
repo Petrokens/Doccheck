@@ -1,6 +1,6 @@
-# Petrolenz QA/QC — Security Implementation
+# DocCheck AI — Security Implementation
 
-This document describes the security controls implemented in the Petrolenz QA/QC **client** and **server**. It is the implementation record for engineering, operations, and security reviewers.
+This document describes the security controls implemented in the DocCheck AI **client** and **server**. It is the implementation record for engineering, operations, and security reviewers.
 
 Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief).
 
@@ -71,8 +71,8 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 
 - CORS allowlist is **`FRONTEND_URL` only** (plus localhost in non-production). Empty allowlist is rejected at boot.
 - Credentials allowed only for allowed origins.
-- State-changing requests require a trusted `Origin` or `X-Requested-With: Petrolenz`.
-- SPA sends `X-Requested-With: Petrolenz` on Axios and download/stream `fetch`.
+- State-changing requests require a trusted `Origin` or `X-Requested-With: DocCheck`.
+- SPA sends `X-Requested-With: DocCheck` on Axios and download/stream `fetch`.
 - Refresh cookie is not readable by JavaScript.
 
 ---

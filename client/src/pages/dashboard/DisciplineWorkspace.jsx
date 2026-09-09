@@ -23,7 +23,7 @@ export default function DisciplineWorkspace({ department }) {
       pageTitle={title}
       pageDescription={description}
       documentTypes={getReadableDocumentTypesForDepartment(department)}
-      initialLogs={['Petrolenz Engine v4.2 Ready', `Awaiting ${title} upload.`]}
+      initialLogs={['DocCheck AI Engine Ready', `Awaiting ${title} upload.`]}
       reportCategory={reportCategory}
     />
   );

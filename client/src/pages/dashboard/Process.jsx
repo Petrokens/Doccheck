@@ -43,7 +43,7 @@ import {
 } from '@/components/ui/select';
 
 const DEFAULT_INITIAL_LOGS = [
-  'Petrolenz Engine v4.2 Ready',
+  'DocCheck AI Engine Ready',
   'OCR scanner ready for scanned PDFs, drawings, and images.',
   'Awaiting project document upload.',
 ];

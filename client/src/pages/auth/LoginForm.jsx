@@ -5,17 +5,20 @@ import { useSessionAuth } from '@/context/SessionAuthContext';
 import { publicApiError } from '@/lib/uploadSafety';
 import { toast } from 'sonner';
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
-import logoMark from '@/assets/icon.png';
+import logoMark from '@/assets/logo.png';
+import { BRAND_COPYRIGHT, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brandCopy';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const REMEMBER_EMAIL_KEY = 'petrolenz.rememberEmail';
+const REMEMBER_EMAIL_KEY = 'doccheck.rememberEmail';
 
 function readRememberedEmail() {
   try {
     localStorage.removeItem('petrolenz.savedLogin');
+    localStorage.removeItem('petrolenz.rememberEmail');
+    localStorage.removeItem('docucheck.rememberEmail');
     return localStorage.getItem(REMEMBER_EMAIL_KEY) || '';
   } catch {
     return '';
@@ -111,11 +114,11 @@ export default function LoginForm() {
   return (
     <div className="w-full">
       <div className="flex items-center gap-3">
-        <img src={logoMark} alt="Petrolenz" className="h-16 w-16 shrink-0 rounded-xl object-contain" />
+        <img src={logoMark} alt={BRAND_NAME} className="h-24 w-24 shrink-0 rounded-xl bg-white object-contain p-0.5 shadow-sm" />
         <div>
-          <p className="font-heading text-2xl font-bold tracking-[0.08em] text-foreground">PETROLENZ</p>
+          <p className="font-heading text-2xl font-bold tracking-[0.04em] text-foreground">{BRAND_NAME}</p>
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            QA / QC Platform
+            {BRAND_TAGLINE}
           </p>
         </div>
       </div>
@@ -126,7 +129,7 @@ export default function LoginForm() {
       <p className="mt-2 text-sm text-muted-foreground">
         {otpStep
           ? `Enter the 6-digit code sent to ${otpStep.emailMasked}`
-          : 'AI QC Checker for Engineering Documents'}
+          : 'Intelligent Engineering Document Quality Assurance'}
       </p>
 
       {otpStep ? (
@@ -228,7 +231,7 @@ export default function LoginForm() {
         </form>
       )}
 
-      <p className="mt-10 text-[11px] text-muted-foreground">© 2026 Petrolenz. All rights reserved.</p>
+      <p className="mt-10 text-[11px] text-muted-foreground">{BRAND_COPYRIGHT}</p>
     </div>
   );
 }

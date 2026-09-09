@@ -1,6 +1,6 @@
-# Petrolenz QA/QC — Authorized Security Testing Brief
+# DocCheck AI — Authorized Security Testing Brief
 
-This brief is for **cybersecurity and ethical hacking teams** engaged by the product owner to test Petrolenz QA/QC.
+This brief is for **cybersecurity and ethical hacking teams** engaged by the product owner to test DocCheck AI.
 
 It defines scope, rules of engagement, and **what to verify**. It is not a guide for attacking systems you do not own.
 
@@ -54,7 +54,7 @@ Typical local layout:
 
 - Client: `http://localhost:5174` (port may vary)
 - API: `http://127.0.0.1:5000`
-- Database: dedicated `petrolenz_qaqc` instance
+- Database: dedicated `doccheck_qaqc` instance
 
 Ask the owner for:
 
@@ -167,6 +167,6 @@ Known residual items already documented in [SECURITY.md](./SECURITY.md) section 
 
 ## 10. Contact
 
-Product: Petrolenz QA/QC  
+Product: DocCheck AI  
 Implementation record: `docs/SECURITY.md`  
 Owner: (fill in before the engagement)

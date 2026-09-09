@@ -35,7 +35,7 @@ function streamProcessReportPdf(res, report) {
 
   const brand = '#0B4D99';
   doc.rect(0, 0, doc.page.width, 46).fill(brand);
-  doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text('PETROLENZ QA/QC REPORT', 48, 16);
+  doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text('DOCCHECK AI QA/QC REPORT', 48, 16);
   doc.fillColor('#0f172a');
 
   doc.moveDown(2);
@@ -107,7 +107,7 @@ function streamProcessReportPdf(res, report) {
   for (let p = 0; p < range.count; p += 1) {
     doc.switchToPage(p);
     doc.fontSize(8).fillColor('#64748b').text(
-      `Petrolenz QA/QC · Confidential · Page ${p + 1} of ${range.count}`,
+      `DocCheck AI · Confidential · Page ${p + 1} of ${range.count}`,
       48,
       doc.page.height - 32,
       { width: doc.page.width - 96, align: 'center' },

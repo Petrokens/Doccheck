@@ -12,7 +12,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  config.headers['X-Requested-With'] = 'Petrolenz';
+  config.headers['X-Requested-With'] = 'DocCheck';
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -36,7 +36,7 @@ api.interceptors.response.use(
       try {
         accessToken = await refreshAccessToken();
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        originalRequest.headers['X-Requested-With'] = 'Petrolenz';
+        originalRequest.headers['X-Requested-With'] = 'DocCheck';
         return api(originalRequest);
       } catch {
         accessToken = null;

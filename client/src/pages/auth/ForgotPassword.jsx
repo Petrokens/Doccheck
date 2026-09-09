@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import AuthLayout from './AuthLayout';
-import logoMark from '@/assets/icon.png';
+import logoMark from '@/assets/logo.png';
+import { BRAND_COPYRIGHT, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brandCopy';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,13 +21,13 @@ export default function ForgotPasswordPage() {
         <div className="flex items-center gap-3">
           <img
             src={logoMark}
-            alt="Petrolenz"
-            className="h-16 w-16 shrink-0 rounded-xl object-contain"
+            alt={BRAND_NAME}
+            className="h-24 w-24 shrink-0 rounded-xl bg-white object-contain p-0.5 shadow-sm"
           />
           <div>
-            <p className="font-heading text-2xl font-bold tracking-[0.08em] text-foreground">PETROLENZ</p>
+            <p className="font-heading text-2xl font-bold tracking-[0.04em] text-foreground">{BRAND_NAME}</p>
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              QA / QC Platform
+              {BRAND_TAGLINE}
             </p>
           </div>
         </div>
@@ -71,7 +72,7 @@ export default function ForgotPasswordPage() {
           </Button>
         </form>
 
-        <p className="mt-10 text-[11px] text-muted-foreground">© 2026 Petrolenz. All rights reserved.</p>
+        <p className="mt-10 text-[11px] text-muted-foreground">{BRAND_COPYRIGHT}</p>
       </div>
     </AuthLayout>
   );

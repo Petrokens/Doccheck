@@ -37,7 +37,7 @@ app.use(express.urlencoded({ extended: false, limit: '200kb' }));
 app.use(cookieParser());
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, product: 'Petrolenz QA/QC' });
+  res.json({ ok: true, product: 'DocCheck AI' });
 });
 app.use('/api/auth', authRoutes);
 app.use('/api/qaqc', qaqcRoutes);

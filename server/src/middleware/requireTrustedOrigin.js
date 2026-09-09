@@ -10,7 +10,7 @@ function requireTrustedOrigin(req, res, next) {
     return next();
   }
   const requestedWith = String(req.get('X-Requested-With') || '');
-  if (requestedWith === 'Petrolenz') return next();
+  if (requestedWith === 'DocCheck') return next();
   return res.status(403).json({ error: 'Trusted origin or client header required.' });
 }
 

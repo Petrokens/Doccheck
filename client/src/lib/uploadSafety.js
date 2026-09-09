@@ -20,7 +20,7 @@ export function publicApiError(err, fallback = 'Request failed') {
     return 'Server is not responding. The API may be waking up or offline — try again in a minute.';
   }
   if (!err?.response && (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error')) {
-    return 'Cannot reach API (https://petrolenz.onrender.com). Check internet or Render service status.';
+    return 'Cannot reach the DocCheck AI API. Check internet or service status.';
   }
   return fallback;
 }

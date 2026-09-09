@@ -4,7 +4,7 @@ let transporter;
 
 function fromAddress() {
   const from = String(process.env.SMTP_FROM || process.env.SMTP_USER || '').trim();
-  return from || 'Petrolenz QA/QC <noreply@localhost>';
+  return from || 'DocCheck AI <noreply@localhost>';
 }
 
 function asList(to) {

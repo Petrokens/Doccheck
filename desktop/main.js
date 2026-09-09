@@ -55,7 +55,7 @@ async function resolveStartUrl() {
 
 function offlineHtml(triedUrl) {
   return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8" /><title>Petrolenz QA/QC</title>
+<html><head><meta charset="UTF-8" /><title>DocCheck AI</title>
 <style>
   body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0f3d3e;color:#e8f1f1;font-family:Segoe UI,sans-serif}
   .card{max-width:520px;padding:28px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(0,0,0,.22)}
@@ -80,7 +80,7 @@ function createMainWindow() {
     height: 900,
     minWidth: 1100,
     minHeight: 720,
-    title: 'Petrolenz QA/QC',
+    title: 'DocCheck AI',
     icon: APP_ICON,
     backgroundColor: '#0f3d3e',
     autoHideMenuBar: true,
@@ -172,7 +172,7 @@ function createSplashWindow() {
     alwaysOnTop: true,
     center: true,
     skipTaskbar: true,
-    title: 'Petrolenz QA/QC',
+    title: 'DocCheck AI',
     icon: APP_ICON,
     backgroundColor: '#050b14',
     webPreferences: {

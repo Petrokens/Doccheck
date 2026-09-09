@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' file:; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
-    <title>Petrolenz QA/QC</title>
+    <title>DocCheck AI</title>
     <style>
       html, body {
         margin: 0;
@@ -33,8 +33,8 @@
       function done() {
         if (finished) return;
         finished = true;
-        if (window.petrolenzSplash && typeof window.petrolenzSplash.finished === 'function') {
-          window.petrolenzSplash.finished();
+        if (window.doccheckSplash && typeof window.doccheckSplash.finished === 'function') {
+          window.doccheckSplash.finished();
         }
       }
 

@@ -9,7 +9,7 @@ async function ensureMasterUser() {
     await roleRepo.create({ id: roleId, name: 'Master' });
   }
 
-  const email = String(process.env.MASTER_EMAIL || 'admin@petrolenz.com').trim().toLowerCase();
+  const email = String(process.env.MASTER_EMAIL || 'admin@doccheck.com').trim().toLowerCase();
   const password = String(process.env.MASTER_PASSWORD || '');
   const username = String(process.env.MASTER_USERNAME || 'Master User');
   if (!password) {

@@ -27,7 +27,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
   return {
     openapi: '3.0.3',
     info: {
-      title: 'Petrolenz QA/QC API',
+      title: 'DocCheck AI API',
       version: '1.0.0',
       description: [
         'Engineering document quality-assurance API.',
@@ -35,7 +35,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
         '**Auth:** send `Authorization: Bearer <accessToken>` on protected routes.',
         'Login and refresh set an httpOnly `refreshToken` cookie (path `/api/auth`).',
         '',
-        '**CSRF:** mutating requests need a trusted `Origin` or `X-Requested-With: Petrolenz`.',
+        '**CSRF:** mutating requests need a trusted `Origin` or `X-Requested-With: DocCheck`.',
         'This UI adds that header automatically.',
         '',
         '**Roles:** `role_id` 1 = Master, 2 = Engineer. Admin routes are Master-only.',
@@ -44,7 +44,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
         'The same QA/QC routes are also mounted at `/api/qc`.',
       ].join('\n'),
     },
-    servers: [{ url: serverUrl || '/', description: 'Petrolenz QA/QC API' }],
+    servers: [{ url: serverUrl || '/', description: 'DocCheck AI API' }],
     tags: [
       { name: 'Health', description: 'Liveness' },
       { name: 'Auth', description: 'Session, password reset, profile' },
@@ -68,7 +68,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
               description: 'API is running',
               ...jsonContent(
                 { $ref: '#/components/schemas/Health' },
-                { ok: true, product: 'Petrolenz QA/QC' },
+                { ok: true, product: 'DocCheck AI' },
               ),
             },
           },
@@ -90,7 +90,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
               { $ref: '#/components/schemas/RegisterRequest' },
               {
                 username: 'engineer.one',
-                email: 'engineer@petrolenz.local',
+                email: 'engineer@doccheck.local',
                 password: 'ChangeMe123!x',
                 role_id: 2,
               },
@@ -122,7 +122,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
             required: true,
             ...jsonContent(
               { $ref: '#/components/schemas/LoginRequest' },
-              { email: 'admin@petrolenz.com', password: 'your-password' },
+              { email: 'admin@doccheck.com', password: 'your-password' },
             ),
           },
           responses: {
@@ -133,7 +133,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
                 {
                   requiresOtp: true,
                   challengeId: '3f1c8a2e-4b9d-4f11-9c0a-1d2e3f4a5b6c',
-                  emailMasked: 'a***@petrolenz.com',
+                  emailMasked: 'a***@doccheck.com',
                   message: 'Enter the verification code sent to your email.',
                 },
               ),
@@ -270,7 +270,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           parameters: trustedOriginParams,
           requestBody: {
             required: true,
-            ...jsonContent({ $ref: '#/components/schemas/ForgotPasswordRequest' }, { email: 'user@petrolenz.local' }),
+            ...jsonContent({ $ref: '#/components/schemas/ForgotPasswordRequest' }, { email: 'user@doccheck.local' }),
           },
           responses: {
             200: {
@@ -865,7 +865,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           name: 'X-Requested-With',
           in: 'header',
           required: false,
-          schema: { type: 'string', enum: ['Petrolenz'] },
+          schema: { type: 'string', enum: ['DocCheck'] },
           description: 'Required on mutating requests when `Origin` is absent.',
         },
         OriginHeader: {

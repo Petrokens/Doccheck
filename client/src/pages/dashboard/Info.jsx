@@ -11,6 +11,16 @@ import {
   UploadCloud,
 } from 'lucide-react';
 import { QA_QC_BASE, QA_QC_PROCESS } from '@/lib/dashboardPaths';
+import {
+  BRAND_CHECK_1,
+  BRAND_CHECK_2,
+  BRAND_NAME,
+  BRAND_OUTPUT,
+  BRAND_PIPELINE,
+  BRAND_RULES,
+  BRAND_SUBTITLE,
+  BRAND_TAGLINE,
+} from '@/lib/brandCopy';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,29 +28,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 const CHECKS = [
   {
     id: 'Check-1',
-    title: 'Standard completeness',
+    title: 'Standard Completeness',
     icon: ClipboardCheck,
     body: 'Fixed document-control checks: title block, revision, scope, references, and approval trail before the package is treated as issue-ready.',
   },
   {
     id: 'Check-2',
-    title: 'Technical deep review',
+    title: 'Technical Review',
     icon: FileSearch,
     body: 'Discipline questions on design conditions, safeguarding, data completeness, operability, and constructability, tagged and scored against the uploaded text.',
   },
   {
     id: 'Rule engine',
-    title: '~4,000-rule library',
+    title: '4,000+ Rules',
     icon: Library,
-    body: 'The engine auto-detects document type and discipline, then runs 50–300 relevant rules. Each rule is OK, Partial, Not OK, or N/A with Critical / Major / Minor severity.',
+    body: 'Engineering quality & compliance rules. The engine auto-detects document type and discipline, then runs 50–300 relevant rules. Each rule is OK, Partial, Not OK, or N/A with Critical / Major / Minor severity.',
   },
 ];
 
 const STEPS = [
-  { n: 1, label: 'Pick a discipline', detail: 'Open Process, Piping, Pipeline, or another workspace from the sidebar.' },
-  { n: 2, label: 'Upload the deliverable', detail: 'PDF, Word, or image. Optional support file for specs or previous revisions.' },
-  { n: 3, label: 'Run analysis', detail: 'Live console shows extraction, OCR if needed, and Check-1 / Check-2 / rule execution.' },
-  { n: 4, label: 'Review and export', detail: 'Read the scored report, then save to History or print a PDF.' },
+  { n: 1, label: 'Upload', detail: 'Upload the engineering deliverable (PDF, Word, or image). Optional support file for specs or previous revisions.' },
+  { n: 2, label: 'Analyze', detail: 'Live console shows extraction, OCR if needed, and document-type detection.' },
+  { n: 3, label: 'Validate', detail: 'Run Check-1 (Standard Completeness) and Check-2 (Technical Review) against the package.' },
+  { n: 4, label: 'Score', detail: 'Apply 4,000+ engineering quality & compliance rules and compute weighted QA/QC scores.' },
+  { n: 5, label: 'Report', detail: 'Review the scored report, save to History, and export PDF.' },
 ];
 
 const DISCIPLINES = [
@@ -98,10 +109,10 @@ export default function Info() {
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Workspace · Info
           </p>
-          <CardTitle className="text-2xl">Petrolenz QA/QC</CardTitle>
+          <CardTitle className="text-2xl">{BRAND_NAME}</CardTitle>
           <CardDescription className="max-w-3xl text-sm leading-relaxed">
-            AI QC checker for engineering documents. Upload a deliverable, run Check-1 (standard completeness),
-            Check-2 (technical review), and the ~4,000-rule library, then store a scored report and export PDF.
+            {BRAND_SUBTITLE}. {BRAND_TAGLINE}. {BRAND_PIPELINE}.
+            {' '}{BRAND_CHECK_1}. {BRAND_CHECK_2}. {BRAND_RULES}. {BRAND_OUTPUT}.
             This product is document quality assurance only — it does not replace qualified engineering judgment.
           </CardDescription>
         </CardHeader>

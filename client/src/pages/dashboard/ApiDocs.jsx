@@ -179,7 +179,7 @@ export default function ApiDocs() {
       }
       const origin = spec?.servers?.[0]?.url || API_BASE_URL.replace(/\/api\/?$/, '');
       const url = `${origin}${urlPath}${search.toString() ? `?${search}` : ''}`;
-      const headers = { 'X-Requested-With': 'Petrolenz' };
+      const headers = { 'X-Requested-With': 'DocCheck' };
       const token = getAccessToken();
       if (token) headers.Authorization = `Bearer ${token}`;
 

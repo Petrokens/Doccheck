@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useSidebarAccess } from '@/context/SidebarAccessContext';
-import { BRAND_EYEBROW, BRAND_TAGLINE } from '@/lib/brandCopy';
-import brandIcon from '@/assets/icon.png';
+import { BRAND_NAME } from '@/lib/brandCopy';
+import brandIcon from '@/assets/logo.png';
 import { buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -29,11 +29,10 @@ export default function Sidebar() {
         <div className="flex items-center gap-3">
           <img src={brandIcon} alt="" className="size-16 shrink-0 rounded-xl object-contain" />
           <div className="min-w-0">
-            <p className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{BRAND_EYEBROW}</p>
-            <p className="text-[1.25rem] font-black tracking-[0.08em] text-sidebar-primary">PETROLENZ</p>
+            <p className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">QA/QC</p>
+            <p className="text-[1.15rem] font-black tracking-[0.04em] text-sidebar-primary">{BRAND_NAME}</p>
           </div>
         </div>
-        <p className="mt-2 text-[0.72rem] leading-snug text-muted-foreground">{BRAND_TAGLINE}</p>
       </div>
       <Separator className="shrink-0" />
       <ScrollArea className="min-h-0 flex-1 overflow-hidden">

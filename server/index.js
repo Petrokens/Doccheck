@@ -37,7 +37,7 @@ async function startServer() {
       process.exit(1);
       return;
     }
-    console.log(`Petrolenz QA/QC API running on http://${HOST}:${PORT}`);
+    console.log(`DocCheck AI API running on http://${HOST}:${PORT}`);
     console.log(`OpenAPI Swagger UI: http://${HOST}:${PORT}/api/docs`);
   });
 }

@@ -67,7 +67,7 @@ async function completeReport({ input, onProgress, reportContext }) {
 
   if (openaiClient) {
     try {
-      emit(`Calling Petrolenz QA/QC Report Engine (${openaiModel})...`);
+      emit(`Calling DocCheck AI Report Engine (${openaiModel})...`);
       const response = await openaiClient.responses.create({
         model: openaiModel,
         input,

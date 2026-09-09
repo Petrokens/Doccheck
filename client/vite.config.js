@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 
 function securityHeaders() {
   return {
-    name: 'petrolenz-security-headers',
+    name: 'doccheck-security-headers',
     configureServer(server) {
       server.middlewares.use((_req, res, next) => {
         res.setHeader('X-Content-Type-Options', 'nosniff');

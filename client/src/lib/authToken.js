@@ -22,7 +22,7 @@ export async function getValidAccessToken() {
 }
 
 export function bearerAuthHeaders(token) {
-  const headers = { 'X-Requested-With': 'Petrolenz' };
+  const headers = { 'X-Requested-With': 'DocCheck' };
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
