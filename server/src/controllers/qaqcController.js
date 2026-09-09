@@ -46,6 +46,7 @@ function inferReportCategory(documentType, override) {
   if (v === 'mechanical') return 'Mechanical';
   if (v === 'civil' || v === 'civil-structural' || v === 'structural') return 'Civil & Structural';
   if (v === 'general' || v === 'general-discipline') return 'General Discipline';
+  if (v === 'common' || v === 'common-document-check') return 'EPC Common Document Check';
   if (v === 'process') return 'Process';
   const dt = String(documentType || '');
   if (/piping/i.test(dt)) return 'Piping';

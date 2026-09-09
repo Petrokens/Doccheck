@@ -22,6 +22,7 @@ const ITEMS = [
   { id: 10, section_id: 1, label: 'Telecom', path: `${QA}/telecom`, icon_name: 'RadioTower', display_order: 10 },
   { id: 11, section_id: 1, label: 'HSE', path: `${QA}/hse`, icon_name: 'Shield', display_order: 11 },
   { id: 12, section_id: 1, label: 'General', path: `${QA}/general-discipline`, icon_name: 'Layers', display_order: 0 },
+  { id: 30, section_id: 1, label: 'EPC Common Document Check', path: `${QA}/common-document-check`, icon_name: 'FileSearch', display_order: 12 },
   { id: 29, section_id: 2, label: 'Announcements', path: '/dashboard/announcements', icon_name: 'Megaphone', display_order: 0 },
   { id: 13, section_id: 2, label: 'History', path: `${QA}/history`, icon_name: 'Clock', display_order: 1 },
   { id: 14, section_id: 2, label: 'Info', path: '/dashboard/info', icon_name: 'Info', display_order: 3 },

@@ -1,6 +1,7 @@
 export const DASHBOARD_HUB = '/dashboard';
 export const QA_QC_BASE = `${DASHBOARD_HUB}/qa-qc`;
 export const QA_QC_PROCESS = `${QA_QC_BASE}/process`;
+export const QA_QC_COMMON_DOCUMENT_CHECK = `${QA_QC_BASE}/common-document-check`;
 export const MAIN_PROFILE = `${DASHBOARD_HUB}/profile`;
 export const MAIN_SETTINGS = `${DASHBOARD_HUB}/settings`;
 export const MAIN_INFO = `${DASHBOARD_HUB}/info`;

@@ -57,6 +57,7 @@ function AppRoutesInner() {
           <Route path="hse" element={<DisciplineWorkspace department="hse" />} />
           <Route path="general" element={<DisciplineWorkspace department="general" />} />
           <Route path="general-discipline" element={<DisciplineWorkspace department="general" />} />
+          <Route path="common-document-check" element={<DisciplineWorkspace department="common" />} />
           <Route path="history" element={<History />} />
           <Route path="ai-review" element={<AIReview />} />
           <Route path="templates" element={<Navigate to="/dashboard" replace />} />

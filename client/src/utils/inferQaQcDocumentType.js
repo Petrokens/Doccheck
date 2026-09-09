@@ -28,6 +28,15 @@ const ALIASES = {
   'io list': 'I/O List',
   isometric: 'Piping Isometric',
   iso: 'Piping Isometric',
+  itp: 'Inspection & Test Plan (ITP)',
+  'inspection and test plan': 'Inspection & Test Plan (ITP)',
+  'method statement': 'Method Statement',
+  'quality plan': 'Quality Plan',
+  'material requisition': 'Material Requisition',
+  'vendor document': 'Vendor Document',
+  'technical query': 'Technical Query (TQ)',
+  tq: 'Technical Query (TQ)',
+  transmittal: 'Document Transmittal',
 };
 
 function normalizePhrase(value) {

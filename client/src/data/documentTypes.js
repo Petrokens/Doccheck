@@ -67,11 +67,28 @@ export const DOCUMENT_TYPES = {
   telecom: ['Telecom Design Basis', 'Telecom Block Diagram', 'Cable Routing Drawing'],
   hse: ['HSE Design Basis', 'HAZOP Report', 'Fire & Gas Layout', 'Escape Route Drawing'],
   general: ['General Engineering Deliverable', 'Project Specification', 'Interface Register'],
+  common: [
+    'EPC Engineering Document',
+    'Method Statement',
+    'Inspection & Test Plan (ITP)',
+    'Quality Plan',
+    'Material Requisition',
+    'Vendor Document',
+    'Project Specification',
+    'Construction Procedure',
+    'Calculation Report',
+    'Datasheet',
+    'Technical Query (TQ)',
+    'Document Transmittal',
+    'Drawing / GA',
+    'Interface Register',
+  ],
 };
 
 export function getReadableDocumentTypesForDepartment(key) {
   if (key === 'civil-structural') return DOCUMENT_TYPES.civil;
   if (key === 'mechanical') return [...DOCUMENT_TYPES['mechanical-rotating'], ...DOCUMENT_TYPES['mechanical-static']];
   if (key === 'general-discipline') return DOCUMENT_TYPES.general;
+  if (key === 'common-document-check') return DOCUMENT_TYPES.common;
   return DOCUMENT_TYPES[key] || DOCUMENT_TYPES.process;
 }

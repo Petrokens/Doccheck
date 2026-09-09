@@ -67,6 +67,7 @@ const DISCIPLINES = [
   { label: 'Telecom', path: `${QA_QC_BASE}/telecom` },
   { label: 'HSE', path: `${QA_QC_BASE}/hse` },
   { label: 'General', path: `${QA_QC_BASE}/general-discipline` },
+  { label: 'EPC Common Document Check', path: `${QA_QC_BASE}/common-document-check` },
 ];
 
 const SCORES = [

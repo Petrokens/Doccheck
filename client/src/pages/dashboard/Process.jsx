@@ -69,6 +69,9 @@ export default function Process({
   initialLogs = DEFAULT_INITIAL_LOGS,
   reportCategory,
   showDocumentTypeSelector = true,
+  documentTypeLabel = 'Engineering Document Type',
+  documentTypeHint = 'Upload a file and we will pick the matching type automatically.',
+  uploadHint = 'Drag and drop your file here — type is selected automatically',
   implicitDocumentType = 'Engineering Document',
   generateButtonLabel = 'Start QA/QC Analysis',
   generatingButtonLabel = 'Generating QA/QC Report...',
@@ -263,7 +266,7 @@ export default function Process({
           <CardContent className="space-y-5">
             {showDocumentTypeSelector ? (
               <div className="space-y-1.5">
-                <Label>Engineering Document Type</Label>
+                <Label>{documentTypeLabel}</Label>
                 <Select
                   value={documentType || undefined}
                   onValueChange={(value) => {
@@ -285,7 +288,7 @@ export default function Process({
                 ) : documentType && documentTypeSource === 'default' ? (
                   <p className="text-xs text-muted-foreground">Default type selected — change it if this file is a different deliverable.</p>
                 ) : !documentType ? (
-                  <p className="text-xs text-muted-foreground">Upload a file and we will pick the matching type automatically.</p>
+                  <p className="text-xs text-muted-foreground">{documentTypeHint}</p>
                 ) : null}
               </div>
             ) : null}
@@ -308,7 +311,7 @@ export default function Process({
               }`}
             >
               <UploadCloud className="mx-auto mb-3 text-muted-foreground" size={34} />
-              <p className="mb-4 text-sm text-muted-foreground">Drag and drop your file here — type is selected automatically</p>
+              <p className="mb-4 text-sm text-muted-foreground">{uploadHint}</p>
               <input
                 ref={fileInputRef}
                 type="file"
