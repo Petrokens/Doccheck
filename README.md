@@ -115,6 +115,15 @@ Copy `server/.env.example` and replace placeholder secrets before any external r
 
 Login → pick discipline → upload main document (optional support) → live console → scored QA/QC report → history → PDF.
 
+## Token cost (estimate per document)
+
+Planning only — real cost depends on pages and model. Details: [docs/UPLOAD-DOCUMENT-TOKEN-REPORT.md](docs/UPLOAD-DOCUMENT-TOKEN-REPORT.md).
+
+| Content type | Min / file | Max / file |
+| ------------ | ---------: | ---------: |
+| **Document** (PDF, Word, text) | ~$0.002 · ~₹0.17 | ~$0.18 · ~₹15 |
+| **Image** (drawing, photo, TIFF) | ~$0.003 · ~₹0.25 | ~$0.12 · ~₹10 |
+
 ## API (QA/QC only)
 
 Interactive docs: **Swagger UI** at `http://localhost:5000/api/docs` (OpenAPI JSON at `/api/docs.json`). Master users can also open **API Docs** in the dashboard.

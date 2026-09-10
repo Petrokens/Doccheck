@@ -1,7 +1,17 @@
-/** Prefer VITE_API_BASE_URL. Dev defaults to local API; production to hosted DocCheck AI API. */
-export const API_BASE_URL =
-  String(import.meta.env.VITE_API_BASE_URL || '').trim() ||
-  (import.meta.env.DEV ? 'http://localhost:5000/api' : 'https://petrolenz.onrender.com/api');
+const PRODUCTION_API_URL = 'https://petrolenz.onrender.com/api';
+
+function resolveApiBaseUrl() {
+  const fromEnv = String(import.meta.env.VITE_API_BASE_URL || '').trim();
+  if (fromEnv) return fromEnv;
+  // Electron desktop always uses hosted API (even when Vite DEV is true).
+  if (typeof window !== 'undefined' && window.doccheckDesktop?.isDesktop) {
+    return PRODUCTION_API_URL;
+  }
+  return import.meta.env.DEV ? 'http://localhost:5000/api' : PRODUCTION_API_URL;
+}
+
+/** Prefer VITE_API_BASE_URL. Desktop → production; browser DEV → local; PROD build → hosted. */
+export const API_BASE_URL = resolveApiBaseUrl();
 
 /** Local PaddleOCR microservice (server/ocr-service). Override with VITE_PADDLEOCR_URL. */
 export const PADDLEOCR_URL =

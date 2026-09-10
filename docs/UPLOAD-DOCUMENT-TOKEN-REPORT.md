@@ -1,195 +1,79 @@
-# DocCheck AI — Upload Document, Token Cost & Report Generate Prompt
+﻿# DocCheck AI Upload - Document Token Cost Report
 
-This document describes the **upload document report table**, **file / page-scan limits**, and the **DocCheck AI report generation prompt** used by the QA/QC engine.
+**PDF version:** [DocCheck-AI-Upload-Document-Token-Cost-Report.pdf](./DocCheck-AI-Upload-Document-Token-Cost-Report.pdf)
+
+## 1. Main answer - cost per document (min & max)
+
+
+| Content type       | Examples                      | Min / document       | Max / document    |
+| ------------------ | ----------------------------- | -------------------- | ----------------- |
+| **Document-based** | PDF, Word, Excel, CSV, text   | **~$0.002 · ~₹0.17** | **~$0.18 · ~₹15** |
+| **Image-based**    | Drawing, PNG, JPG, WEBP, TIFF | **~$0.003 · ~₹0.25** | **~$0.12 · ~₹10** |
+
+
+
+|               | Document-based             | Image-based                                |
+| ------------- | -------------------------- | ------------------------------------------ |
+| **Min means** | Short file (~1-5 pages)    | One sheet / one image                      |
+| **Max means** | Large file (~50-100 pages) | Dense set (~5-20 sheets or multipage TIFF) |
+
 
 ---
 
-## 1. Upload documents report (table)
+## 2. Document-based content (text / PDF / Word)
 
-| SNO | Document Type | Page Count | Token Consume | Token Cost (USD) | Token Cost (INR ₹) |
-| --- | ------------- | ----------: | ------------: | ---------------: | -----------------: |
-| 1 | PDF | — | — | — | — |
-| 2 | Excel | — | — | — | — |
-| 3 | Word | — | — | — | — |
-| 4 | CAD | — | — | — | — |
-| 5 | Drawing | — | — | — | — |
 
-### Column definitions
+| Size   | Pages    | Est. tokens         | Cost (USD)     | Cost (INR)    |
+| ------ | -------- | ------------------- | -------------- | ------------- |
+| Small  | 1 - 5    | ~2,000 - ~10,000    | $0.002 - $0.01 | ₹0.17 - ₹0.85 |
+| Medium | 10 - 25  | ~20,000 - ~50,000   | $0.02 - $0.05  | ₹1.70 - ₹4.20 |
+| Large  | 50 - 100 | ~100,000 - ~200,000 | $0.09 - $0.18  | ₹7.50 - ₹15   |
 
-| Column | Description |
-| ------ | ----------- |
-| **SNO** | Serial number of the uploaded file in the batch (1, 2, 3…). |
-| **Document Type** | **PDF**, **Excel**, **Word**, **CAD**, or **Drawing**. |
-| **Page Count** | Pages in PDF / multipage TIFF, or `1` for single-page images / Word. |
-| **Token Consume** | Total LLM tokens (`prompt_tokens` + `completion_tokens` → `total_tokens`). |
-| **Token Cost (USD)** | Estimated USD cost (`token_cost_usd`). |
-| **Token Cost (INR ₹)** | `token_cost_usd × USD_TO_INR` (default **₹83.50 / $1** via `VITE_USD_TO_INR`). |
 
-### Example
+**Per document:** min **~$0.002 (₹0.17)** · max **~$0.18 (₹15)**
 
-| SNO | Document Type | Page Count | Token Consume | Token Cost (USD) | Token Cost (INR ₹) |
-| --- | ------------- | ----------: | ------------: | ---------------: | -----------------: |
-| 1 | PDF | 24 | 48,210 | $0.042500 | ₹3.55 |
-| 2 | Drawing | 1 | 6,800 | $0.003200 | ₹0.27 |
+---
+
+## 3. Image-based content (drawings / photos)
+
+
+| Size   | Images / pages | Est. tokens        | Cost (USD)      | Cost (INR)    |
+| ------ | -------------- | ------------------ | --------------- | ------------- |
+| Small  | 1              | ~5,000 - ~8,000    | $0.003 - $0.005 | ₹0.25 - ₹0.40 |
+| Medium | 2 - 5          | ~12,000 - ~40,000  | $0.008 - $0.03  | ₹0.70 - ₹2.50 |
+| Large  | 5 - 20         | ~40,000 - ~160,000 | $0.03 - $0.12   | ₹2.50 - ₹10   |
+
+
+**Per document:** min **~$0.003 (₹0.25)** · max **~$0.12 (₹10)**
+
+> One image page often costs **more than one text page**. A very large PDF can still cost more **per file** because it has many pages.
+
+---
+
+## 4. Simple guide (INR)
+
+
+| You upload...                | Expect about...   |
+| ---------------------------- | ----------------- |
+| Small PDF / Word (few pages) | **₹0.20 - ₹1**    |
+| Medium PDF (10-25 pages)     | **₹2 - ₹4**       |
+| Large PDF (50-100 pages)     | **₹8 - ₹15**      |
+| One drawing / image          | **₹0.25 - ₹0.40** |
+| Many drawings (5-20)         | **₹3 - ₹10**      |
+
+
+---
+
+## 5. Measured sample
+
+
+| Content type   | File    | Pages | Tokens | USD     | INR   |
+| -------------- | ------- | ----- | ------ | ------- | ----- |
+| Document-based | PDF     | 24    | 48,210 | $0.0425 | ₹3.55 |
+| Image-based    | Drawing | 1     | 6,800  | $0.0032 | ₹0.27 |
+
 
 ```text
-Token Cost (INR) = Token Cost (USD) × 83.5
+Token Cost (INR) = Token Cost (USD) x 83.5
 ```
 
----
-
-## 2. Document type mapping (DocCheck AI)
-
-| Report category | Typical extensions | DocCheck AI support |
-| --------------- | ------------------ | ------------------- |
-| **PDF** | `.pdf` | Fully supported |
-| **Excel** | `.xlsx`, `.xls`, `.csv` | **CSV** allowed; native Excel not in allow-list yet |
-| **Word** | `.docx` | Supported |
-| **CAD** | PDF export from CAD | Upload as PDF (DWG/DXF not accepted) |
-| **Drawing** | `.png`, `.jpg`, `.jpeg`, `.webp`, `.tif`, `.tiff` | Supported |
-
-**Allowed uploads today:** `.pdf` `.docx` `.txt` `.csv` `.md` `.png` `.jpg` `.jpeg` `.webp` `.tif` `.tiff`
-
----
-
-## 3. File size limits
-
-| Limit | Value |
-| ----- | ----- |
-| **Min file size** | **1 byte** (non-empty; empty files rejected) |
-| **Max file size** | **100 MB** per file |
-
----
-
-## 4. Page scan size limits
-
-Every uploaded page is read. There is no 40-page (or 60-page) skip.
-
-### Server OCR (AI report extraction)
-
-| Limit | Default | Config |
-| ----- | ------- | ------ |
-| **Min pages scanned** | **1** | — |
-| **Max pages scanned** | **All pages** | `OCR_MAX_PAGES` (`0` / empty = unlimited) |
-| **OCR raster max edge** | **2200 px** | `OCR_MAX_RASTER_EDGE` |
-
-Set `OCR_MAX_PAGES` to a positive number only if an operator needs a hard safety cap. Default is **read every page**.
-
-### Client PDF preview
-
-| File size | Max preview pages |
-| --------- | ----------------: |
-| Any size | **All pages** |
-
-Thumbnails are built for every page. The open page is rendered at full preview size so large documents (80+ pages) stay usable.
-
-| Preview raster | Value |
-| -------------- | ----- |
-| Main max edge | **1400 px** |
-| Thumbnail max edge | **220 px** |
-
----
-
-## 5. Report generate prompt (DocCheck AI)
-
-Source: `server/src/services/qaqcAiService.js` → `QAQC_MASTER_PROMPT`
-
-The live engine prompt is **DocCheck AI** and **rule-based only** (no Petrolens/Petrolenz, no 4000 rule count).
-
-```text
-DOCCHECK AI QA/QC REPORT ENGINE
-RULE-BASED ENGINEERING QA/QC
-ROLE DEFINITION
-
-You are DocCheck AI — a Senior Multidisciplinary Engineering QA Expert with over 40 years of experience in EPC projects across Oil and Gas, Petrochemical, Energy, Offshore, Pipelines, and Industrial facilities.
-
-You are a rule-based AI QA/QC engine. Apply only engineering QA rules that are relevant to the uploaded document type and discipline. Do not invent or advertise any fixed total rule count.
-
-CORE OBJECTIVE
-For every engineering deliverable submitted:
-- Perform structured QA/QC review under the DocCheck AI brand
-- Execute only applicable rule-based checks for this document
-- Detect design errors, missing data, cross-document inconsistencies, safety risks, calculation errors, operability and constructability concerns
-- Generate a standardized DocCheck AI QA/QC report
-
-BRANDING (MANDATORY)
-- Always name the tool / engine as **DocCheck AI QA/QC Report Engine**
-- Never use Petrolens, Petrolenz, Petrolenz QA/QC, or any other product name
-- Never mention “4000”, “4,000”, “4000-rule”, “4K-rule”, or any fixed rule-library size
-- Describe the engine as **rule-based** only
-- In SECTION 1 Report Header, set **Tool** to: DocCheck AI QA/QC Report Engine
-- In SECTION 3 System Initialization, set **Engine** to: DocCheck AI QA/QC Report Engine
-- In SECTION 3, set rule method to: Rule-based engineering QA checks (document-type filtered)
-
-RULE ENGINE INTEGRATION
-1. Auto-detect document type, discipline, and systems
-2. Select only the rules that apply to this deliverable
-3. For each applied rule assign Status: OK / Partial / Not OK / N/A and Severity: Critical / Major / Minor
-4. Compute QA Score, Technical Score, Rule Score, Interface Score, and Final QC Score
-
-REPORT GENERATION FORMAT (MANDATORY)
-SECTION 1–11 as structured DocCheck AI QA/QC report (Check-1, Check-2, rule-based execution, consolidated scoring)
-```
-
-### Report wrapper text (also DocCheck AI)
-
-When a report is saved, the markdown header / footer use:
-
-| Field | Value |
-| ----- | ----- |
-| Title lines | `# DOCCHECK AI QA/QC REPORT ENGINE` / `# RULE-BASED ENGINEERING QA/QC` |
-| Footer engine | `DocCheck AI QA/QC Report Engine v4.2 \| Method: Rule-based engineering QA` |
-| Demo / fallback tool | `DocCheck AI QA/QC Report Engine` |
-
----
-
-## 6. Summary cheat sheet
-
-| Item | Min | Max |
-| ---- | --- | --- |
-| **File size** | 1 byte | **100 MB** / file |
-| **OCR page scan** | 1 page | **All pages** (`OCR_MAX_PAGES=0`) |
-| **UI preview pages** | 1 page | **All pages** |
-| **OCR page raster edge** | — | **2200 px** |
-| **Preview page raster edge** | — | **1400 px** / **220 px** thumb |
-
----
-
-## 7. Blank report template
-
-```markdown
-# DocCheck AI — Upload Document Token Report
-
-**Date:** YYYY-MM-DD  
-**Report / Job ID:**  
-**User:**  
-**Model / Provider:**  
-**Engine:** DocCheck AI QA/QC Report Engine  
-
-| SNO | Document Type (PDF / Excel / Word / CAD / Drawing) | Page Count | Token Consume | Token Cost (USD) | Token Cost (INR ₹) |
-| --- | -------------------------------------------------- | ----------: | ------------: | ---------------: | -----------------: |
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-
-**Totals**
-
-| Metric | Value |
-| ------ | ----: |
-| Total pages | |
-| Total tokens | |
-| Total cost (USD) | |
-| Total cost (INR ₹) | |
-
-**Limits applied**
-
-| Limit | Value |
-| ----- | ----- |
-| File size (min / max) | 1 byte / 100 MB |
-| OCR page scan (min / max) | 1 / all pages |
-| Preview page scan | All pages |
-```
-
----
-
-*DocCheck AI only. Restart the API after pulling these prompt changes so new reports use the DocCheck branding.*

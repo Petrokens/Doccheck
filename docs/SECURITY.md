@@ -8,17 +8,23 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 
 ## 1. Security objectives
 
-| Objective | How it is met |
-|-----------|----------------|
-| Confidentiality of reports and accounts | Authenticated APIs, report ownership, hashed refresh/reset tokens |
-| Integrity of users and roles | Master-only admin APIs, no caller-chosen privilege on public register |
-| Availability | Rate limits, upload size/type limits, lockout |
-| Session safety | Short-lived access JWT in memory, httpOnly refresh cookie, rotation |
-| Defense in depth | Headers, origin checks, allowlisted uploads, RBAC on UI and API |
+
+| Objective                               | How it is met                                                         |
+| --------------------------------------- | --------------------------------------------------------------------- |
+| Confidentiality of reports and accounts | Authenticated APIs, report ownership, hashed refresh/reset tokens     |
+| Integrity of users and roles            | Master-only admin APIs, no caller-chosen privilege on public register |
+| Availability                            | Rate limits, upload size/type limits, lockout                         |
+| Session safety                          | Short-lived access JWT in memory, httpOnly refresh cookie, rotation   |
+| Defense in depth                        | Headers, origin checks, allowlisted uploads, RBAC on UI and API       |
+
 
 ---
 
+
+
 ## 2. Authentication and session
+
+
 
 ### Access token
 
@@ -28,6 +34,8 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 - **Not stored in localStorage or sessionStorage.** Kept in SPA memory only.
 - Each request re-checks the user still exists in the database (`verifyToken`).
 
+
+
 ### Refresh token
 
 - Signed JWT (`REFRESH_TOKEN_SECRET`), 7-day expiry.
@@ -35,6 +43,8 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 - **SHA-256 hash** stored in PostgreSQL, never the raw token.
 - **Rotated** on every successful refresh and login.
 - Logout and password reset clear the stored refresh hash.
+
+
 
 ### Login hardening
 
@@ -45,6 +55,8 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 - Password policy for new/reset passwords: 12+ characters, upper, lower, digit, symbol.
 - bcrypt cost factor **12**.
 
+
+
 ### Password reset
 
 - Reset token is 32 random bytes, stored as SHA-256, 30-minute expiry.
@@ -53,29 +65,37 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 
 ---
 
+
+
 ## 3. Authorization
 
-| Resource | Rule |
-|----------|------|
-| QA/QC generate, history, stats | Authenticated. Non-Master users only see their own reports. |
-| Report get / patch / delete / PDF | Authenticated **and** owner, or Master (`role_id = 1`). Missing reports return 404 (no IDOR oracle). |
-| Admin users/roles/permissions | `verifyToken` + `requireRole([1])`. |
-| Register | Master-only unless `AUTH_ALLOW_PUBLIC_REGISTER=true` (blocked in production). Public register cannot create Master. |
-| User delete | Cannot delete self. Cannot delete the last Master. |
-| Sidebar | Administration and environment config hidden for non-Master. |
-| Frontend admin routes | `RoleProtectedRoute` requires Master. |
+
+| Resource                          | Rule                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| QA/QC generate, history, stats    | Authenticated. Non-Master users only see their own reports.                                                         |
+| Report get / patch / delete / PDF | Authenticated **and** owner, or Master (`role_id = 1`). Missing reports return 404 (no IDOR oracle).                |
+| Admin users/roles/permissions     | `verifyToken` + `requireRole([1])`.                                                                                 |
+| Register                          | Master-only unless `AUTH_ALLOW_PUBLIC_REGISTER=true` (blocked in production). Public register cannot create Master. |
+| User delete                       | Cannot delete self. Cannot delete the last Master.                                                                  |
+| Sidebar                           | Administration and environment config hidden for non-Master.                                                        |
+| Frontend admin routes             | `RoleProtectedRoute` requires Master.                                                                               |
+
 
 ---
 
+
+
 ## 4. CSRF and CORS
 
-- CORS allowlist is **`FRONTEND_URL` only** (plus localhost in non-production). Empty allowlist is rejected at boot.
+- CORS allowlist is `FRONTEND_URL` **only** (plus localhost in non-production). Empty allowlist is rejected at boot.
 - Credentials allowed only for allowed origins.
 - State-changing requests require a trusted `Origin` or `X-Requested-With: DocCheck`.
 - SPA sends `X-Requested-With: DocCheck` on Axios and download/stream `fetch`.
 - Refresh cookie is not readable by JavaScript.
 
 ---
+
+
 
 ## 5. HTTP security headers
 
@@ -95,26 +115,34 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 
 ---
 
+
+
 ## 5.1 API documentation
 
 Swagger UI is served at `/api/docs` (OpenAPI JSON at `/api/docs.json`) when `ENABLE_SWAGGER=true`, or by default when `NODE_ENV` is not `production`. Leave it disabled on internet-facing production hosts.
 
 ---
 
+
+
 ## 6. Upload and document processing
 
-| Control | Value |
-|---------|--------|
-| Allowed types | pdf, docx, txt, csv, md, png, jpg, jpeg, webp, tif, tiff |
-| Magic-byte check | Declared extension must match file contents |
-| Size | 25 MB per file |
-| Count | 3 main + 5 support |
-| Filename | Basename sanitized, control characters stripped |
-| Client | Same type/size checks on choose-file and drag-and-drop |
+
+| Control          | Value                                                    |
+| ---------------- | -------------------------------------------------------- |
+| Allowed types    | pdf, docx, txt, csv, md, png, jpg, jpeg, webp, tif, tiff |
+| Magic-byte check | Declared extension must match file contents              |
+| Size             | 25 MB per file                                           |
+| Count            | 3 main + 5 support                                       |
+| Filename         | Basename sanitized, control characters stripped          |
+| Client           | Same type/size checks on choose-file and drag-and-drop   |
+
 
 Parser libraries still process untrusted files (PDF/Office/OCR). Size and type limits reduce, but do not eliminate, parser risk. See residual risks.
 
 ---
+
+
 
 ## 7. Injection and XSS
 
@@ -126,17 +154,23 @@ Parser libraries still process untrusted files (PDF/Office/OCR). Size and type l
 
 ---
 
+
+
 ## 8. Rate limiting
 
-| Scope | Limit |
-|-------|--------|
-| Global | 400 / 15 min / IP |
-| Login | 8 / 15 min |
-| Forgot / reset password | 5 / 15 min |
-| Refresh | 40 / 15 min |
-| QA/QC generation | 12 / hour |
+
+| Scope                   | Limit             |
+| ----------------------- | ----------------- |
+| Global                  | 400 / 15 min / IP |
+| Login                   | 8 / 15 min        |
+| Forgot / reset password | 5 / 15 min        |
+| Refresh                 | 40 / 15 min       |
+| QA/QC generation        | 12 / hour         |
+
 
 ---
+
+
 
 ## 9. Secrets and bootstrap
 
@@ -157,6 +191,8 @@ Default listen address in development: `127.0.0.1`. Use `BIND_HOST=0.0.0.0` only
 
 ---
 
+
+
 ## 10. Frontend session model
 
 1. Login returns access JWT in JSON; refresh JWT in httpOnly cookie.
@@ -168,6 +204,8 @@ Default listen address in development: `127.0.0.1`. Use `BIND_HOST=0.0.0.0` only
 
 ---
 
+
+
 ## 11. Audit events
 
 The API writes JSON audit lines to stdout, including:
@@ -177,6 +215,8 @@ The API writes JSON audit lines to stdout, including:
 Ship these logs to your SIEM in production.
 
 ---
+
+
 
 ## 12. Residual risks (accepted / monitor)
 
@@ -190,6 +230,8 @@ These are honest limits of the current stack, not excuses to skip testing:
 6. After deploying hashed refresh tokens, **existing refresh cookies are invalid** — users must log in again.
 
 ---
+
+
 
 ## 13. Operator checklist before an external test
 
