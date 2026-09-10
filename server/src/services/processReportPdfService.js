@@ -2,6 +2,9 @@ const PDFDocument = require('pdfkit');
 
 const INK = '#000000';
 const PAPER = '#FFFFFF';
+const RULE = '#222222';
+const MUTED_FILL = '#EFEFEF';
+const ZEBRA = '#F7F7F7';
 
 function plainLine(line) {
   return String(line || '')
@@ -40,14 +43,14 @@ function isDivider(line) {
 function columnKind(header) {
   const h = String(header || '').toLowerCase().trim();
   if (/^(s\.?\s*no|sno|sr\.?\s*no|#)$/.test(h)) return 'sno';
-  if (/^(field|metric|item|attribute|parameter|label)$/.test(h)) return 'label';
-  if (/^(details?|value|count|result)$/.test(h)) return 'value';
-  if (/\bid\b|ref\.?|check\s*no|item\s*no/.test(h)) return 'id';
+  if (/^(field|metric|item|attribute|parameter|label|component)$/.test(h)) return 'label';
+  if (/^(details?|value|count|result|weight|weighted\s*score)$/.test(h)) return 'value';
+  if (/\bid\b|ref\.?|check\s*no|item\s*no|question\s*id|rule\s*id/.test(h)) return 'id';
   if (/severity|priority|category|class/.test(h)) return 'severity';
   if (/^status$|result|verdict/.test(h)) return 'status';
-  if (/^score$|pts|points/.test(h)) return 'score';
+  if (/^score$|pts|points|score\s*\(%\)/.test(h)) return 'score';
   if (/^tag$|system|discipline/.test(h)) return 'tag';
-  if (/remark|finding|comment|observation|note/.test(h)) return 'remarks';
+  if (/remark|finding|comment|observation|note|impact|action|owner/.test(h)) return 'remarks';
   if (/description|question|requirement|check\s*item|criteria/.test(h)) return 'description';
   return 'default';
 }
@@ -61,7 +64,19 @@ function isKeyValueTable(header) {
 
 function isFindingsTable(header) {
   if (header.length < 3) return false;
-  return header.some((h) => ['id', 'description', 'status', 'score', 'remarks', 'severity'].includes(columnKind(h)));
+  // Summary / scoring grids should not get an auto S.No column.
+  if (header.some((h) => /component|weight|weighted|metric/i.test(String(h)))) return false;
+  const kinds = header.map(columnKind);
+  const hasId = kinds.includes('id');
+  const hasBody = kinds.some((k) => ['description', 'remarks', 'status', 'severity'].includes(k));
+  return hasId && hasBody;
+}
+
+function isRedundantScoreTable(header, rows) {
+  if (!isKeyValueTable(header) || rows.length !== 1) return false;
+  const label = String(rows[0][0] || '').toLowerCase();
+  const value = String(rows[0][1] || '');
+  return /final\s*qc\s*score/.test(label) && /\d+(\.\d+)?%?/.test(value);
 }
 
 function columnWidthsFor(header, usable) {
@@ -72,30 +87,30 @@ function columnWidthsFor(header, usable) {
   const weights = kinds.map((kind) => {
     switch (kind) {
       case 'sno':
-        return 0.5;
+        return 0.42;
       case 'id':
-        return 1.0;
+        return 0.9;
       case 'label':
-        return 1.2;
+        return 1.4;
       case 'value':
-        return 2.2;
+        return 1.7;
       case 'severity':
       case 'status':
       case 'score':
       case 'tag':
-        return 0.9;
+        return 0.82;
       case 'description':
-        return 2.5;
+        return 2.55;
       case 'remarks':
-        return 2.3;
+        return 2.15;
       default:
-        return 1.4;
+        return 1.25;
     }
   });
   const sum = weights.reduce((a, b) => a + b, 0) || 1;
   const widths = weights.map((w) => (usable * w) / sum);
   const used = widths.slice(0, -1).reduce((a, b) => a + b, 0);
-  widths[widths.length - 1] = Math.max(24, usable - used);
+  widths[widths.length - 1] = Math.max(22, usable - used);
   return widths;
 }
 
@@ -114,12 +129,17 @@ function withSerialColumn(header, rows) {
   };
 }
 
+function parseBoldLabelLine(line) {
+  const m = String(line || '').trim().match(/^\*\*([^*]+):\*\*\s*(.*)$/);
+  if (!m) return null;
+  return { label: m[1].trim(), value: plainMultiline(m[2] || '') };
+}
+
 function shouldSkipMarkdownLine(line, index) {
   const t = String(line || '').trim();
   if (!t) return false;
-  // Title is drawn once by the PDF header — skip duplicate markdown H1.
   if (/^#+\s*DOCCHECK QA\/QC Report\s*$/i.test(t)) return true;
-  if (index < 40) {
+  if (index < 50) {
     if (/^#+\s*(PETROLENS|PETROLENZ|DOCCHECK)/i.test(t)) return true;
     if (/^#+\s*WITH INTEGRATED/i.test(t)) return true;
     if (/^#+\s*RULE-BASED ENGINEERING/i.test(t)) return true;
@@ -134,6 +154,28 @@ function shouldSkipMarkdownLine(line, index) {
     if (/^Not provided$/i.test(t)) return true;
   }
   return false;
+}
+
+/** Drop SECTION 1 body — cover block already carries document control fields. */
+function stripRedundantSectionOne(lines) {
+  const out = [];
+  let skipping = false;
+  for (const line of lines) {
+    const t = String(line || '').trim();
+    if (/^#{1,3}\s*(?:SECTION\s*)?1\b/i.test(t) && !/^#{1,3}\s*1\.\d/.test(t)) {
+      skipping = true;
+      continue;
+    }
+    if (skipping) {
+      if (/^#{1,3}\s*(?:SECTION\s*)?\d{1,2}\b/i.test(t) && !/^#{1,3}\s*\d+\.\d/.test(t)) {
+        skipping = false;
+        out.push(line);
+      }
+      continue;
+    }
+    out.push(line);
+  }
+  return out;
 }
 
 function compactMarkdownLines(markdown) {
@@ -152,7 +194,7 @@ function compactMarkdownLines(markdown) {
     out.push(line);
   });
   while (out.length && !out[out.length - 1].trim()) out.pop();
-  return out;
+  return stripRedundantSectionOne(out);
 }
 
 function isMajorSection(line) {
@@ -160,17 +202,22 @@ function isMajorSection(line) {
     && !/^#{1,3}\s*\d+\.\d/.test(String(line || '').trim());
 }
 
+function formatSectionTitle(line) {
+  const raw = plainLine(line);
+  const m = raw.match(/^(?:SECTION\s*)?(\d{1,2})\s*[:.\-–—]\s*(.+)$/i);
+  if (m) return { num: m[1], title: m[2].trim() };
+  return { num: null, title: raw };
+}
+
 function streamProcessReportPdf(res, report) {
-  const title = report.report_title || `${report.document_type || 'QA/QC'} Report`;
+  const title = report.report_title || 'DOCCHECK QA/QC Report';
   const filename = String(title).replace(/[^a-zA-Z0-9-_]+/g, '-').slice(0, 80) || 'qaqc-report';
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="${filename}.pdf"`);
 
-  const margin = 46;
-  const footerReserve = 44;
-  const headerBand = 42;
-  // Bottom margin must cover the footer band so PDFKit never auto-adds blank pages
-  // when content or footers are drawn near the page edge.
+  const margin = 44;
+  const footerReserve = 42;
+  const headerBand = 34;
   const doc = new PDFDocument({
     size: 'A4',
     margins: { top: margin, left: margin, right: margin, bottom: footerReserve },
@@ -183,13 +230,13 @@ function streamProcessReportPdf(res, report) {
   const pageRight = doc.page.width - margin;
   const usable = pageRight - pageLeft;
   const contentBottom = () => doc.page.height - footerReserve;
+  let justDrewScore = false;
 
   const resetX = () => {
     doc.x = pageLeft;
   };
 
-  /** Write in the footer zone without triggering PDFKit's margin page-break. */
-  const withFooterWrite = (fn) => {
+  const withSafeWrite = (fn) => {
     const prev = doc.page.margins.bottom;
     doc.page.margins.bottom = 0;
     try {
@@ -201,27 +248,22 @@ function streamProcessReportPdf(res, report) {
 
   const drawHeaderBand = () => {
     doc.save();
-    doc.rect(0, 0, doc.page.width, headerBand).fill(PAPER);
-    withFooterWrite(() => {
-      doc.fillColor(INK).font('Helvetica-Bold').fontSize(9)
+    withSafeWrite(() => {
+      doc.fillColor(INK).font('Helvetica-Bold').fontSize(8)
         .text('DOCCHECK AI', pageLeft, 12, { width: usable * 0.5, lineBreak: false });
-      doc.font('Helvetica').fontSize(8)
-        .text('QA/QC REPORT', pageLeft + usable * 0.5, 12, {
-          width: usable * 0.5,
+      doc.font('Helvetica').fontSize(7)
+        .text('QA / QC REPORT', pageLeft + usable * 0.4, 12, {
+          width: usable * 0.6,
           align: 'right',
           lineBreak: false,
         });
     });
-    doc.strokeColor(INK).lineWidth(1.4)
-      .moveTo(pageLeft, headerBand - 8)
-      .lineTo(pageRight, headerBand - 8)
-      .stroke();
-    doc.lineWidth(0.4)
-      .moveTo(pageLeft, headerBand - 5)
-      .lineTo(pageRight, headerBand - 5)
+    doc.strokeColor(RULE).lineWidth(1)
+      .moveTo(pageLeft, headerBand - 4)
+      .lineTo(pageRight, headerBand - 4)
       .stroke();
     doc.restore();
-    doc.y = headerBand + 8;
+    doc.y = headerBand + 4;
     resetX();
     doc.fillColor(INK);
   };
@@ -240,9 +282,9 @@ function streamProcessReportPdf(res, report) {
     resetX();
   };
 
-  const drawRule = (weight = 0.8, gapAfter = 8) => {
-    ensureSpace(6 + gapAfter);
-    doc.strokeColor(INK).lineWidth(weight)
+  const drawRule = (weight = 0.7, gapAfter = 6) => {
+    ensureSpace(3 + gapAfter);
+    doc.strokeColor(RULE).lineWidth(weight)
       .moveTo(pageLeft, doc.y)
       .lineTo(pageRight, doc.y)
       .stroke();
@@ -255,51 +297,83 @@ function streamProcessReportPdf(res, report) {
       x = pageLeft,
       size = 9,
       bold = false,
-      color = INK,
+      italic = false,
       width = usable,
       lineGap = 1.15,
       align = 'left',
     } = opts;
-    doc.fillColor(color).font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(size);
-    const h = doc.heightOfString(String(text || ''), { width, lineGap });
+    const value = String(text || '');
+    const font = bold ? 'Helvetica-Bold' : italic ? 'Helvetica-Oblique' : 'Helvetica';
+    doc.fillColor(INK).font(font).fontSize(size);
+    const h = doc.heightOfString(value, { width, lineGap });
     ensureSpace(h + 2);
-    doc.text(String(text || ''), x, doc.y, {
-      width,
-      lineGap,
-      align,
-      continued: false,
-      height: Math.max(h + 1, size + 2),
+    withSafeWrite(() => {
+      doc.text(value, x, doc.y, {
+        width,
+        lineGap,
+        align,
+        continued: false,
+        height: Math.max(h + 1, size + 2),
+      });
     });
     resetX();
     return h;
   };
 
-  const writeMetaBlock = (pairs) => {
+  const writeControlBlock = (rows) => {
     const labelW = Math.round(usable * 0.28);
     const valueW = usable - labelW;
-    doc.font('Helvetica-Bold').fontSize(8);
-    const heights = pairs.map(([label, value]) => {
-      const lh = doc.font('Helvetica-Bold').fontSize(8).heightOfString(label, { width: labelW - 10, lineGap: 0.6 });
-      const vh = doc.font('Helvetica').fontSize(8).heightOfString(String(value || '—'), { width: valueW - 10, lineGap: 0.6 });
-      return Math.max(16, lh + 8, vh + 8);
+    const heights = rows.map(([label, value]) => {
+      const lh = doc.font('Helvetica-Bold').fontSize(8)
+        .heightOfString(label, { width: labelW - 12, lineGap: 0.4 });
+      const vh = doc.font('Helvetica').fontSize(8.5)
+        .heightOfString(String(value || '—'), { width: valueW - 12, lineGap: 0.4 });
+      return Math.max(18, lh + 8, vh + 8);
     });
-    const totalH = heights.reduce((a, b) => a + b, 0);
-    ensureSpace(totalH + 4);
+    ensureSpace(heights.reduce((a, b) => a + b, 0) + 2);
     let y = doc.y;
-    pairs.forEach(([label, value], idx) => {
+    rows.forEach(([label, value], idx) => {
       const h = heights[idx];
       doc.save();
-      doc.rect(pageLeft, y, usable, h).fill(PAPER).strokeColor(INK).lineWidth(0.6).stroke();
-      doc.rect(pageLeft, y, labelW, h).stroke();
+      if (idx % 2 === 1) doc.rect(pageLeft, y, usable, h).fill(ZEBRA);
+      else doc.rect(pageLeft, y, usable, h).fill(PAPER);
+      doc.strokeColor(RULE).lineWidth(0.5).rect(pageLeft, y, usable, h).stroke();
+      doc.moveTo(pageLeft + labelW, y).lineTo(pageLeft + labelW, y + h).stroke();
       doc.restore();
-      doc.fillColor(INK).font('Helvetica-Bold').fontSize(8)
-        .text(label, pageLeft + 5, y + 4, { width: labelW - 10, lineGap: 0.6 });
-      doc.font('Helvetica').fontSize(8)
-        .text(String(value || '—'), pageLeft + labelW + 5, y + 4, { width: valueW - 10, lineGap: 0.6 });
+      withSafeWrite(() => {
+        doc.fillColor(INK).font('Helvetica-Bold').fontSize(8)
+          .text(label, pageLeft + 6, y + 4, { width: labelW - 12, lineGap: 0.4 });
+        doc.font('Helvetica').fontSize(8.5)
+          .text(String(value || '—'), pageLeft + labelW + 6, y + 4, {
+            width: valueW - 12,
+            lineGap: 0.4,
+          });
+      });
       y += h;
     });
     doc.y = y + 10;
     resetX();
+  };
+
+  const writeKvRows = (pairs) => {
+    writeControlBlock(pairs);
+  };
+
+  const drawStatusBadge = (text, x, y, maxW, maxH) => {
+    const label = String(text || '—').trim() || '—';
+    doc.font('Helvetica-Bold').fontSize(6.5);
+    const tw = Math.min(maxW - 4, Math.max(doc.widthOfString(label) + 8, 28));
+    const th = Math.min(maxH - 2, 11);
+    const bx = x + Math.max(0, (maxW - tw) / 2);
+    const by = y + Math.max(0, (maxH - th) / 2 - 1);
+    doc.save();
+    doc.roundedRect(bx, by, tw, th, 1.5).fill(PAPER);
+    doc.roundedRect(bx, by, tw, th, 1.5).strokeColor(INK).lineWidth(0.85).stroke();
+    doc.restore();
+    withSafeWrite(() => {
+      doc.fillColor(INK).font('Helvetica-Bold').fontSize(6.5)
+        .text(label, bx, by + 2, { width: tw, align: 'center', lineBreak: false });
+    });
   };
 
   const paintTable = (headerIn, rowsIn) => {
@@ -307,61 +381,76 @@ function streamProcessReportPdf(res, report) {
     let rows = rowsIn.map((r) => normalizeRow(r, Math.max(headerIn.length, 1)));
     ({ header, rows } = withSerialColumn(header, rows));
     rows = rows.map((r) => normalizeRow(r, header.length));
+    if (justDrewScore && isRedundantScoreTable(header, rows)) {
+      justDrewScore = false;
+      return;
+    }
+    justDrewScore = false;
+
     const kinds = header.map(columnKind);
     const colWidths = columnWidthsFor(header, usable);
+    const keyValue = isKeyValueTable(header);
 
     const measureRow = (cells, headerRow) => {
       doc.font(headerRow ? 'Helvetica-Bold' : 'Helvetica').fontSize(headerRow ? 7.5 : 8);
       const heights = cells.map((cell, idx) => {
+        const kind = kinds[idx];
+        if (!headerRow && (kind === 'status' || kind === 'severity')) return 16;
         const h = doc.heightOfString(String(cell || '—'), {
           width: Math.max(colWidths[idx] - 8, 12),
-          lineGap: 0.7,
+          lineGap: 0.55,
         });
-        return Math.max(h + 8, 15);
+        return Math.max(h + 7, headerRow ? 15 : 14);
       });
-      return Math.max(15, ...heights);
+      return Math.max(headerRow ? 15 : 14, ...heights);
     };
 
-    const paintRow = (cells, headerRow = false) => {
+    const paintRow = (cells, headerRow = false, zebra = false) => {
       const naturalH = measureRow(cells, headerRow);
-      const minUseful = headerRow ? naturalH : Math.min(Math.max(naturalH, 18), 28);
+      const minUseful = headerRow ? naturalH : Math.min(Math.max(naturalH, 16), 24);
       if (doc.y + minUseful > contentBottom() - 0.5) {
         newPage();
-        if (!headerRow) paintRow(header, true);
+        if (!headerRow) paintRow(header, true, false);
       }
       const available = contentBottom() - doc.y;
-      // Prefer a full new page over a clipped stub row at the bottom.
-      if (!headerRow && naturalH > available + 0.5 && available < 40) {
+      if (!headerRow && naturalH > available + 0.5 && available < 36) {
         newPage();
-        paintRow(header, true);
+        paintRow(header, true, false);
       }
       const room = contentBottom() - doc.y;
-      const maxH = naturalH > room ? Math.max(room, 16) : naturalH;
+      const maxH = naturalH > room ? Math.max(room, 14) : naturalH;
       const y = doc.y;
       let x = pageLeft;
+
       cells.forEach((cell, idx) => {
         const w = colWidths[idx];
         const kind = kinds[idx];
-        if (headerRow) {
-          doc.save().rect(x, y, w, maxH).fill(INK).restore();
+        doc.save();
+        if (headerRow) doc.rect(x, y, w, maxH).fill(MUTED_FILL);
+        else if (zebra && !keyValue) doc.rect(x, y, w, maxH).fill(ZEBRA);
+        else doc.rect(x, y, w, maxH).fill(PAPER);
+        doc.restore();
+        doc.rect(x, y, w, maxH).strokeColor(RULE).lineWidth(0.45).stroke();
+
+        if (!headerRow && (kind === 'status' || kind === 'severity')) {
+          drawStatusBadge(cell, x + 2, y + 1, w - 4, maxH - 2);
         } else {
-          doc.save().rect(x, y, w, maxH).fill(PAPER).restore();
+          const align = ['sno', 'score', 'tag'].includes(kind) ? 'center' : 'left';
+          const useBold = headerRow || kind === 'sno' || kind === 'id' || kind === 'label'
+            || (keyValue && idx === 0);
+          withSafeWrite(() => {
+            doc.fillColor(INK)
+              .font(useBold ? 'Helvetica-Bold' : 'Helvetica')
+              .fontSize(headerRow ? 7.5 : 8)
+              .text(String(cell || '—'), x + 4, y + 3.5, {
+                width: w - 8,
+                height: maxH - 5,
+                align,
+                lineGap: 0.55,
+                ellipsis: maxH < naturalH - 0.5,
+              });
+          });
         }
-        doc.rect(x, y, w, maxH).strokeColor(INK).lineWidth(0.6).stroke();
-        const align = ['sno', 'severity', 'status', 'score', 'tag'].includes(kind) ? 'center' : 'left';
-        const useBold = headerRow || kind === 'sno' || kind === 'id' || kind === 'label';
-        withFooterWrite(() => {
-          doc.fillColor(headerRow ? PAPER : INK)
-            .font(useBold ? 'Helvetica-Bold' : 'Helvetica')
-            .fontSize(headerRow ? 7.5 : 8)
-            .text(String(cell || '—'), x + 4, y + 4, {
-              width: w - 8,
-              height: maxH - 6,
-              align,
-              lineGap: 0.7,
-              ellipsis: maxH < naturalH - 0.5,
-            });
-        });
         x += w;
       });
       doc.y = y + maxH;
@@ -369,17 +458,83 @@ function streamProcessReportPdf(res, report) {
     };
 
     const headerH = measureRow(header, true);
-    const firstH = rows[0] ? Math.min(measureRow(rows[0], false), 36) : 0;
-    ensureSpace(headerH + firstH + 4);
-    paintRow(header, true);
-    rows.forEach((row) => paintRow(row, false));
+    const firstH = rows[0] ? Math.min(measureRow(rows[0], false), 30) : 0;
+    ensureSpace(headerH + firstH + 2);
+    paintRow(header, true, false);
+    rows.forEach((row, idx) => paintRow(row, false, idx % 2 === 1));
     doc.y += 8;
     resetX();
   };
 
+  const writeScoreCallout = (scoreText) => {
+    const value = plainLine(scoreText);
+    ensureSpace(36);
+    const y = doc.y;
+    const boxH = 30;
+    doc.save();
+    doc.rect(pageLeft, y, usable, boxH).fill(MUTED_FILL).strokeColor(INK).lineWidth(1).stroke();
+    doc.rect(pageLeft, y, 3.5, boxH).fill(INK);
+    doc.restore();
+    withSafeWrite(() => {
+      doc.fillColor(INK).font('Helvetica').fontSize(7)
+        .text('FINAL QC SCORE', pageLeft + 12, y + 5, { width: usable - 24, lineBreak: false });
+      doc.font('Helvetica-Bold').fontSize(14)
+        .text(value, pageLeft + 12, y + 14, { width: usable - 24, lineBreak: false });
+    });
+    doc.y = y + boxH + 8;
+    justDrewScore = true;
+    resetX();
+  };
+
+  const writeSectionHeading = (line) => {
+    const level = (line.match(/^#+/) || ['#'])[0].length;
+    const major = isMajorSection(line);
+    const { num, title } = formatSectionTitle(line);
+    // Keep heading with following body (avoids orphan headers / near-empty pages).
+    const keepWith = major ? 56 : 36;
+    const padBefore = major ? 10 : 6;
+
+    if (major) {
+      const heading = num ? `${num}.  ${title.toUpperCase()}` : title.toUpperCase();
+      doc.font('Helvetica-Bold').fontSize(9.5);
+      const textH = doc.heightOfString(heading, { width: usable, lineGap: 1 });
+      ensureSpace(padBefore + textH + 10 + keepWith);
+      doc.y += padBefore;
+      writeText(heading, { size: 9.5, bold: true });
+      doc.y += 1;
+      drawRule(1.1, 3);
+      drawRule(0.35, 7);
+      return;
+    }
+
+    const size = level <= 2 ? 9 : 8.5;
+    const heading = plainLine(line);
+    doc.font('Helvetica-Bold').fontSize(size);
+    const textH = doc.heightOfString(heading, { width: usable, lineGap: 1 });
+    ensureSpace(padBefore + textH + 8 + keepWith);
+    doc.y += padBefore;
+    writeText(heading, { size, bold: true });
+    if (level <= 2) drawRule(0.55, 6);
+    else doc.y += 3;
+  };
+
+  // —— Document cover / control ——
   drawHeaderBand();
-  writeText(report.report_title || 'DOCCHECK QA/QC Report', { size: 14, bold: true });
+  writeText('DOCCHECK QA/QC REPORT', { size: 14, bold: true });
+  doc.y += 1;
+  writeText('Engineering document quality assurance & control', { size: 8, italic: true });
   doc.y += 8;
+  drawRule(1, 8);
+
+  writeControlBlock([
+    ['Document type', report.document_type || 'N/A'],
+    ['Main document', report.main_document_name || 'N/A'],
+    ['Support document', report.support_document_name || 'Not provided'],
+    ['Report ID', report.id || 'N/A'],
+    ['Generated', report.created_at
+      ? new Date(report.created_at).toUTCString().replace('GMT', 'UTC')
+      : new Date().toUTCString().replace('GMT', 'UTC')],
+  ]);
 
   const lines = compactMarkdownLines(report.report_markdown);
   let i = 0;
@@ -410,30 +565,32 @@ function streamProcessReportPdf(res, report) {
       const body = fence.join('\n') || ' ';
       doc.font('Courier').fontSize(7.5);
       const h = doc.heightOfString(body, { width: usable - 12, lineGap: 1 });
-      ensureSpace(h + 14);
+      ensureSpace(h + 12);
       const y = doc.y;
-      doc.save().rect(pageLeft, y, usable, h + 10).fill(PAPER).strokeColor(INK).lineWidth(0.6).stroke().restore();
-      doc.fillColor(INK).font('Courier').fontSize(7.5)
-        .text(body, pageLeft + 6, y + 5, { width: usable - 12, lineGap: 1 });
-      doc.y = y + h + 16;
+      doc.save().rect(pageLeft, y, usable, h + 8).fill(ZEBRA).strokeColor(RULE).lineWidth(0.45).stroke().restore();
+      withSafeWrite(() => {
+        doc.fillColor(INK).font('Courier').fontSize(7.5)
+          .text(body, pageLeft + 6, y + 4, { width: usable - 12, lineGap: 1, height: h + 2 });
+      });
+      doc.y = y + h + 12;
       resetX();
       continue;
     }
 
     if (/^#{1,3}\s+/.test(line)) {
-      const level = (line.match(/^#+/) || ['#'])[0].length;
-      const major = isMajorSection(line);
-      const size = major || level === 1 ? 11 : level === 2 ? 10 : 9;
-      const padBefore = major ? 8 : level === 1 ? 6 : 4;
-      const heading = major ? plainLine(line).toUpperCase() : plainLine(line);
-      doc.font('Helvetica-Bold').fontSize(size);
-      const textH = doc.heightOfString(heading, { width: usable, lineGap: 1.15 });
-      // One reserve for padding + heading + rule so we never open a blank page.
-      ensureSpace(padBefore + textH + 14);
-      doc.y += padBefore;
-      writeText(heading, { size, bold: true });
-      drawRule(major || level <= 2 ? 1 : 0.5, major ? 8 : 6);
+      writeSectionHeading(line);
       i += 1;
+      continue;
+    }
+
+    if (parseBoldLabelLine(line)) {
+      const pairs = [];
+      while (i < lines.length && parseBoldLabelLine(lines[i])) {
+        const parsed = parseBoldLabelLine(lines[i]);
+        pairs.push([parsed.label, parsed.value || '—']);
+        i += 1;
+      }
+      writeKvRows(pairs);
       continue;
     }
 
@@ -444,7 +601,8 @@ function streamProcessReportPdf(res, report) {
         i += 1;
       }
       for (const bullet of bullets) {
-        writeText(`•  ${bullet}`, { size: 9, lineGap: 1.2 });
+        writeText(`•  ${bullet}`, { size: 8.5, lineGap: 1.2, x: pageLeft + 2, width: usable - 2 });
+        doc.y += 1;
       }
       doc.y += 3;
       resetX();
@@ -458,7 +616,8 @@ function streamProcessReportPdf(res, report) {
         i += 1;
       }
       items.forEach((item, idx) => {
-        writeText(`${idx + 1}.  ${item}`, { size: 9, lineGap: 1.2 });
+        writeText(`${idx + 1}.  ${item}`, { size: 8.5, lineGap: 1.2, x: pageLeft + 2, width: usable - 2 });
+        doc.y += 1;
       });
       doc.y += 3;
       resetX();
@@ -471,37 +630,44 @@ function streamProcessReportPdf(res, report) {
         quotes.push(plainMultiline(lines[i].replace(/^\s*>\s+/, '')));
         i += 1;
       }
-      writeText(quotes.join(' '), { size: 9, x: pageLeft + 12, width: usable - 12 });
-      doc.y += 3;
+      const body = quotes.join(' ');
+      doc.font('Helvetica-Oblique').fontSize(8.5);
+      const h = doc.heightOfString(body, { width: usable - 16, lineGap: 1.15 });
+      ensureSpace(h + 10);
+      const y = doc.y;
+      doc.save();
+      doc.rect(pageLeft, y, 2, h + 4).fill(INK);
+      doc.restore();
+      withSafeWrite(() => {
+        doc.fillColor(INK).font('Helvetica-Oblique').fontSize(8.5)
+          .text(body, pageLeft + 8, y + 2, { width: usable - 16, lineGap: 1.15, height: h + 2 });
+      });
+      doc.y = y + h + 10;
       resetX();
       continue;
     }
 
     if (/^\s*---+\s*$/.test(line)) {
-      doc.y += 2;
-      drawRule(0.7, 8);
+      drawRule(0.55, 7);
       i += 1;
       continue;
     }
 
     if (/^\*\*\d+(\.\d+)?%\*\*$/.test(line.trim()) || /^\d+(\.\d+)?%$/.test(line.trim())) {
-      ensureSpace(28);
-      writeText(plainLine(line), { size: 16, bold: true, align: 'left' });
-      doc.y += 4;
+      writeScoreCallout(line);
       i += 1;
       continue;
     }
 
     if (line.trim()) {
-      writeText(plainMultiline(line), { size: 9 });
+      writeText(plainMultiline(line), { size: 8.5 });
       doc.y += 2;
       resetX();
       i += 1;
       continue;
     }
 
-    // Soft blank — skip if it would only eat the last usable strip on a page.
-    if (doc.y + 18 < contentBottom()) doc.y += 3;
+    if (doc.y + 14 < contentBottom()) doc.y += 3;
     resetX();
     i += 1;
   }
@@ -509,19 +675,24 @@ function streamProcessReportPdf(res, report) {
   const range = doc.bufferedPageRange();
   for (let p = 0; p < range.count; p += 1) {
     doc.switchToPage(range.start + p);
-    withFooterWrite(() => {
+    withSafeWrite(() => {
       doc.save();
       const fy = doc.page.height - 28;
-      doc.strokeColor(INK).lineWidth(0.6)
-        .moveTo(pageLeft, fy - 8)
-        .lineTo(pageRight, fy - 8)
+      doc.strokeColor(RULE).lineWidth(0.55)
+        .moveTo(pageLeft, fy - 7)
+        .lineTo(pageRight, fy - 7)
         .stroke();
-      doc.font('Helvetica').fontSize(7.5).fillColor(INK).text(
-        `DocCheck AI  ·  Confidential  ·  Page ${p + 1} of ${range.count}`,
-        pageLeft,
-        fy,
-        { width: usable, align: 'center', lineBreak: false },
-      );
+      doc.font('Helvetica').fontSize(7).fillColor(INK);
+      doc.text('DocCheck AI  ·  Confidential', pageLeft, fy, {
+        width: usable * 0.58,
+        align: 'left',
+        lineBreak: false,
+      });
+      doc.text(`Page ${p + 1} of ${range.count}`, pageLeft + usable * 0.42, fy, {
+        width: usable * 0.58,
+        align: 'right',
+        lineBreak: false,
+      });
       doc.restore();
     });
   }
