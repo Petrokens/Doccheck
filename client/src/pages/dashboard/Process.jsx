@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchProcessReport,
   generateProcessReportStream,
+  isScanAborted,
   printProcessReportPdf,
 } from '@/services/processReportService';
 import ReportMarkdownView from '@/components/Common/ReportMarkdownView';
@@ -98,6 +99,7 @@ export default function Process({
   const reportMarkdownAnchorRef = useRef(null);
   const inferSeqRef = useRef(0);
   const fileInputRef = useRef(null);
+  const abortRef = useRef(null);
 
   const resolvedDocumentType = showDocumentTypeSelector ? documentType : implicitDocumentType;
   const canGenerate = Boolean(resolvedDocumentType && mainDocument && !isGenerating);
@@ -166,6 +168,8 @@ export default function Process({
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
     setIsGenerating(true);
     setError('');
     setReport(null);
@@ -180,6 +184,7 @@ export default function Process({
           reportCategory,
         },
         {
+          signal: controller.signal,
           onLog: (line) => line && pushLog(line),
           onReport: (nextReport) => {
             receivedReport = nextReport;
@@ -190,16 +195,25 @@ export default function Process({
           },
         },
       );
-      if (!receivedReport) throw new Error('Report generation completed without report data.');
+      if (controller.signal.aborted || !receivedReport) {
+        if (controller.signal.aborted) return;
+        throw new Error('Report generation completed without report data.');
+      }
       pushLog(`Report generated successfully. Report ID: ${receivedReport.id}`);
     } catch (err) {
+      if (controller.signal.aborted || isScanAborted(err)) return;
       const message = err?.response?.data?.error || err?.message || 'Failed to generate report.';
       setError(message);
       pushLog(`Error: ${message}`);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       setIsGenerating(false);
     }
   };
+
+  useEffect(() => () => {
+    abortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     if (consoleBodyRef.current) consoleBodyRef.current.scrollTop = consoleBodyRef.current.scrollHeight;
@@ -307,7 +321,7 @@ export default function Process({
                 e.preventDefault();
                 setIsDragOver(false);
                 const file = e.dataTransfer?.files?.[0];
-                if (file) handleProjectDocumentChange(file);
+                if (file && !isGenerating) handleProjectDocumentChange(file);
               }}
               className={`rounded-xl border-2 border-dashed p-6 text-center ${
                 isDragOver ? 'border-primary bg-primary/10' : 'border-border bg-muted/40'
@@ -322,7 +336,7 @@ export default function Process({
                 onChange={(e) => handleProjectDocumentChange(e.target.files?.[0] || null)}
                 className="hidden"
               />
-              <Button type="button" onClick={() => fileInputRef.current?.click()}>
+              <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={isGenerating}>
                 Choose File
               </Button>
               {mainDocument ? (
@@ -339,7 +353,7 @@ export default function Process({
                   <div className="text-sm font-medium">Support Document</div>
                   <div className="truncate text-xs text-muted-foreground">{supportDocument ? supportDocument.name : 'Not attached'}</div>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsSupportModalOpen(true)}>
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsSupportModalOpen(true)} disabled={isGenerating}>
                   {supportDocument ? 'Change' : 'Add'}
                 </Button>
               </div>

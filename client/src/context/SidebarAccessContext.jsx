@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useSessionAuth } from '@/context/SessionAuthContext';
 import { getSidebarData } from '@/services/processReportService';
 import { MAIN_PROFILE } from '@/lib/dashboardPaths';
+import { onAppRefresh } from '@/lib/appRefresh';
 
 const PATH_ALIASES = {
   '/dashboard/qa-qc/civil': '/dashboard/qa-qc/civil-structural',
@@ -56,7 +57,11 @@ export function SidebarAccessProvider({ children }) {
   useEffect(() => {
     const onFocus = () => reload();
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    const stop = onAppRefresh(reload);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      stop();
+    };
   }, [reload]);
 
   const isMaster = Number(user?.role_id) === 1;

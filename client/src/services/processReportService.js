@@ -23,16 +23,26 @@ export async function generateProcessReport({ documentType, mainDocument, suppor
   return response.data?.report;
 }
 
-async function postStream(formData, accessToken) {
+export function isScanAborted(error) {
+  return (
+    error?.name === 'AbortError' ||
+    error?.code === 'ERR_CANCELED' ||
+    error?.code === 'CANCELLED' ||
+    /scanning stopped|The operation was aborted/i.test(String(error?.message || ''))
+  );
+}
+
+async function postStream(formData, accessToken, signal) {
   return fetch(`${API_BASE_URL}/qaqc/process-report/stream`, {
     method: 'POST',
     body: formData,
     credentials: 'include',
     headers: bearerAuthHeaders(accessToken),
+    signal,
   });
 }
 
-export async function generateProcessReportStream(params, { onLog, onReport, onError } = {}) {
+export async function generateProcessReportStream(params, { onLog, onReport, onError, signal } = {}) {
   const makeBody = () => {
     const formData = new FormData();
     formData.append('documentType', params.documentType || '');
@@ -44,11 +54,12 @@ export async function generateProcessReportStream(params, { onLog, onReport, onE
   };
 
   let accessToken = await getValidAccessToken();
-  let response = await postStream(makeBody(), accessToken);
+  let response = await postStream(makeBody(), accessToken, signal);
   if (response.status === 401) {
+    if (signal?.aborted) throw signal.reason || new DOMException('Scanning stopped.', 'AbortError');
     accessToken = await refreshAccessToken();
     setAccessToken(accessToken);
-    response = await postStream(makeBody(), accessToken);
+    response = await postStream(makeBody(), accessToken, signal);
   }
   if (!response.ok || !response.body) {
     throw new Error(`Streaming request failed (${response.status})`);
@@ -103,6 +114,7 @@ export async function generateProcessReportStream(params, { onLog, onReport, onE
   }
   if (buffer.trim()) flushEvent(buffer);
   if (streamError) throw new Error(streamError);
+  if (signal?.aborted) throw signal.reason || new DOMException('Scanning stopped.', 'AbortError');
   if (!receivedReport && pendingReportId) {
     receivedReport = await fetchProcessReport(pendingReportId);
     onReport?.(receivedReport);

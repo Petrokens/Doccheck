@@ -11,6 +11,7 @@ import { jwtDecode } from 'jwt-decode';
 import { getUserProfile, refreshAccessToken, logoutUser as apiLogout } from '@/services/authService';
 import { clearAccessToken, getAccessToken, setAccessToken } from '@/lib/axios';
 import { clearRoleTheme } from '@/lib/theme';
+import { onAppRefresh } from '@/lib/appRefresh';
 
 function isAccessTokenValid(token) {
   if (!token || typeof token !== 'string') return false;
@@ -30,13 +31,13 @@ export function SessionAuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const bootRef = useRef(0);
 
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async ({ keepOnError = false } = {}) => {
     try {
       const profile = await getUserProfile();
       setUser(profile);
       return profile;
     } catch {
-      setUser(null);
+      if (!keepOnError) setUser(null);
       return null;
     }
   }, []);
@@ -68,6 +69,10 @@ export function SessionAuthProvider({ children }) {
       if (gen === bootRef.current) setReady(true);
     });
   }, [restoreSession]);
+
+  useEffect(() => onAppRefresh(() => {
+    loadProfile({ keepOnError: true });
+  }), [loadProfile]);
 
   const markLoggedIn = useCallback(async (token) => {
     setAccessToken(token);

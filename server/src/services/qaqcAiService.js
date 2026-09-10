@@ -4,20 +4,26 @@ const { generateDummyQaQcReport } = require('./dummyReportService');
 const { emptyUsage, usageFromResponse } = require('../security/tokenUsage');
 
 const QAQC_MASTER_PROMPT = `
-PETROLENS QA/QC REPORT ENGINE
+DOCCHECK AI QA/QC REPORT ENGINE
 WITH INTEGRATED 4000-RULE ENGINEERING QA RULE LIBRARY
 ROLE DEFINITION
 
-You are a Senior Multidisciplinary Engineering QA Expert with over 40 years of experience in EPC projects across Oil and Gas, Petrochemical, Energy, Offshore, Pipelines, and Industrial facilities.
+You are DocCheck AI — a Senior Multidisciplinary Engineering QA Expert with over 40 years of experience in EPC projects across Oil and Gas, Petrochemical, Energy, Offshore, Pipelines, and Industrial facilities.
 
 You are also an AI-powered Rule Engine capable of executing a predefined Engineering QA Rule Library consisting of 4000 rules across 40 batches.
 
 CORE OBJECTIVE
 For every engineering deliverable submitted:
-- Perform structured QA/QC review
+- Perform structured QA/QC review under the DocCheck AI brand
 - Execute relevant rules from the 4000-rule library
 - Detect design errors, missing data, cross-document inconsistencies, safety risks, calculation errors, operability and constructability concerns
-- Generate a standardized QA/QC report
+- Generate a standardized DocCheck AI QA/QC report
+
+BRANDING (MANDATORY)
+- Always name the tool / engine as **DocCheck AI QA/QC Report Engine**
+- Never use any other product name in the report — only DocCheck AI
+- In SECTION 1 Report Header, set **Tool** / **Reviewed by tool** to: DocCheck AI QA/QC Report Engine
+- In SECTION 3 System Initialization, set **Engine** to: DocCheck AI QA/QC Report Engine
 
 RULE ENGINE INTEGRATION
 1. Auto-detect document type, discipline, and systems
@@ -26,9 +32,9 @@ RULE ENGINE INTEGRATION
 4. Compute QA Score, Technical Score, Rule Score, Interface Score, and Final QC Score
 
 REPORT GENERATION FORMAT (MANDATORY)
-SECTION 1: REPORT HEADER (project, facility, document title/number/revision, discipline, review date, reviewed by, tool)
+SECTION 1: REPORT HEADER (project, facility, document title/number/revision, discipline, review date, reviewed by, tool = DocCheck AI QA/QC Report Engine)
 SECTION 2: EXECUTIVE SUMMARY DASHBOARD (scores as 0–100 percentages, counts)
-SECTION 3: SYSTEM INITIALIZATION
+SECTION 3: SYSTEM INITIALIZATION (Engine = DocCheck AI QA/QC Report Engine)
 SECTION 4: CHECK-1 QA/QC FIXED CHECKS as a markdown table: Check ID | Description | Status | Score | Remarks
 SECTION 5: CHECK-2 TECHNICAL DEEP REVIEW as a markdown table: Question ID | Tag | Question | Status | Score | Remarks
 SECTION 6: RULE ENGINE EXECUTION summary + table: Rule ID | Description | Severity | Status | Impact
@@ -40,7 +46,7 @@ SECTION 7: CONSOLIDATED SCORING with these exact subsections:
 SECTION 8: FINAL VERDICT AND ACTIONS (Approved / Approved with Comments / Rework Required / Rejected)
 SECTION 9: FINDINGS BY PRIORITY — Critical, Major, Minor tables
 SECTION 10: SUPPORTING INFORMATION
-SECTION 11: DISCLAIMER — this review does not replace qualified engineering judgment
+SECTION 11: DISCLAIMER — this DocCheck AI review does not replace qualified engineering judgment
 
 Scoring: OK = 10, Partial = 7.5, Not OK = 0, N/A excluded.
 Component scores are percentages: (average of non-N/A check points / 10) × 100.
@@ -67,11 +73,12 @@ function extractTextFromResponse(response) {
   return parts.join('\n').trim();
 }
 
-async function completeReport({ input, onProgress, reportContext }) {
+async function completeReport({ input, onProgress, reportContext, signal }) {
   const emit = typeof onProgress === 'function' ? onProgress : () => {};
   const openaiClient = getOpenAIClient();
   const openaiModel = getOpenAIModel();
   let lastError = '';
+  const requestOpts = signal ? { signal } : undefined;
 
   if (openaiClient) {
     try {
@@ -80,7 +87,7 @@ async function completeReport({ input, onProgress, reportContext }) {
         model: openaiModel,
         input,
         temperature: 0.2,
-      });
+      }, requestOpts);
       const markdown = extractTextFromResponse(response);
       if (markdown) {
         emit(`AI engine response received (OpenAI / ${openaiModel}).`);
@@ -92,6 +99,7 @@ async function completeReport({ input, onProgress, reportContext }) {
       }
       lastError = 'OpenAI returned an empty response.';
     } catch (error) {
+      if (signal?.aborted || error?.name === 'AbortError' || error?.code === 'CANCELLED') throw error;
       lastError = String(error?.message || error);
       emit(`OpenAI unavailable (${lastError}). Switching to alternate AI provider...`);
     }
@@ -109,7 +117,7 @@ async function completeReport({ input, onProgress, reportContext }) {
         model: groqModel,
         messages: [{ role: 'user', content: input }],
         temperature: 0.2,
-      });
+      }, requestOpts);
       const markdown = String(response?.choices?.[0]?.message?.content || '').trim();
       if (markdown) {
         emit(`AI engine response received (Groq / ${groqModel}).`);
@@ -120,6 +128,7 @@ async function completeReport({ input, onProgress, reportContext }) {
         };
       }
     } catch (error) {
+      if (signal?.aborted || error?.name === 'AbortError' || error?.code === 'CANCELLED') throw error;
       lastError = String(error?.message || error);
       emit(`Groq unavailable (${lastError}).`);
     }
@@ -144,6 +153,7 @@ async function generateProcessQcReport({
   mainText,
   supportText,
   onProgress,
+  signal,
 }) {
   const clip = (text) => String(text || '').replace(/\u0000/g, '').slice(0, 400000);
   const input = `
@@ -166,6 +176,7 @@ END_UNTRUSTED_DOCUMENT
     input,
     onProgress,
     reportContext: { documentType, mainDocumentName, supportDocumentName, mainText },
+    signal,
   });
   if (typeof onProgress === 'function' && provider) {
     onProgress(`Report engine provider: ${provider}`);

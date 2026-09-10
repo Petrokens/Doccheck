@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useSessionAuth } from '@/context/SessionAuthContext';
 import { MAIN_PROFILE, MAIN_SETTINGS } from '@/lib/dashboardPaths';
 import { BRAND_EYEBROW, BRAND_TAGLINE } from '@/lib/brandCopy';
+import { requestAppRefresh } from '@/lib/appRefresh';
 import brandIcon from '@/assets/logo.png';
 
 function formatGmtOffset(date) {
@@ -31,6 +32,7 @@ export default function Topbar() {
   const { logout, user } = useSessionAuth();
   const [now, setNow] = useState(() => new Date());
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -51,7 +53,10 @@ export default function Topbar() {
     .toUpperCase();
 
   const refreshApp = () => {
-    window.location.reload();
+    if (refreshing) return;
+    setRefreshing(true);
+    requestAppRefresh();
+    window.setTimeout(() => setRefreshing(false), 700);
   };
 
   const toggleFullscreen = async () => {
@@ -82,8 +87,8 @@ export default function Topbar() {
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" aria-label="Refresh" onClick={refreshApp}>
-              <RefreshCw />
+            <Button type="button" variant="ghost" size="icon" aria-label="Refresh" disabled={refreshing} onClick={refreshApp}>
+              <RefreshCw className={refreshing ? 'animate-spin' : ''} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Refresh</TooltipContent>

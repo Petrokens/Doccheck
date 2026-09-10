@@ -65,7 +65,7 @@ function footerBlock(generatedAtIso) {
     '---',
     '',
     `**Report Generated:** ${toHumanDateTime(generatedAtIso)}`,
-    '**Report Engine:** Petrolens QA/QC Report Engine v4.2 | Rule Library: 4,000 Rules | Batch Execution: 40/40',
+    '**Report Engine:** DocCheck AI QA/QC Report Engine v4.2 | Rule Library: 4,000 Rules | Batch Execution: 40/40',
     '**Confidentiality:** Project-Sensitive | Distribution: Authorized Personnel Only',
     '',
     '---',
@@ -79,8 +79,16 @@ async function buildProcessReport({
   supportFiles,
   checkedByUserId,
   onProgress,
+  signal,
 }) {
-  const emit = typeof onProgress === 'function' ? onProgress : () => {};
+  const emit = (line) => {
+    if (signal?.aborted) {
+      const err = new Error('Scanning stopped.');
+      err.code = 'CANCELLED';
+      throw err;
+    }
+    if (typeof onProgress === 'function') onProgress(line);
+  };
   const mains = Array.isArray(mainFiles) ? mainFiles.filter(Boolean) : [];
   const supports = Array.isArray(supportFiles) ? supportFiles.filter(Boolean) : [];
   if (!mains.length) throw new Error('At least one main project document is required.');
@@ -112,8 +120,12 @@ async function buildProcessReport({
   emit('Preparing AI & 4000 Rule Engine LLM payload...');
   let pulse = 0;
   const timer = setInterval(() => {
-    pulse += 1;
-    emit(`AI engine is reviewing document context... (${pulse * 5}s)`);
+    try {
+      pulse += 1;
+      emit(`AI engine is reviewing document context... (${pulse * 5}s)`);
+    } catch {
+      clearInterval(timer);
+    }
   }, 5000);
 
   let aiMarkdown = '';
@@ -126,6 +138,7 @@ async function buildProcessReport({
       mainText,
       supportText,
       onProgress: emit,
+      signal,
     });
     aiMarkdown = generated?.markdown || generated || '';
     usage = generated?.usage || {};
@@ -141,7 +154,7 @@ async function buildProcessReport({
     hasSupportDocument: supports.length > 0,
   });
   const report_markdown = [
-    '# PETROLENS QA/QC REPORT ENGINE',
+    '# DOCCHECK AI QA/QC REPORT ENGINE',
     '# WITH INTEGRATED 4000-RULE ENGINEERING QA RULE',
     '# LIBRARY',
     '',
@@ -242,9 +255,23 @@ exports.generateProcessReportStream = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
+  const jobAbort = new AbortController();
+  const onClientGone = () => {
+    if (!jobAbort.signal.aborted) jobAbort.abort();
+  };
+  req.on('aborted', onClientGone);
+  req.on('close', () => {
+    if (!res.writableEnded) onClientGone();
+  });
+
   const sendEvent = (event, payload) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    if (jobAbort.signal.aborted || res.writableEnded) return;
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch {
+      onClientGone();
+    }
   };
 
   try {
@@ -272,8 +299,11 @@ exports.generateProcessReportStream = async (req, res) => {
       mainFiles,
       supportFiles,
       checkedByUserId: String(req.user?.user_id || '').trim(),
+      signal: jobAbort.signal,
       onProgress: (line) => sendEvent('log', { line }),
     });
+
+    if (jobAbort.signal.aborted) return res.end();
 
     sendEvent('report', {
       reportId: record.id,
@@ -290,6 +320,16 @@ exports.generateProcessReportStream = async (req, res) => {
     sendEvent('done', { ok: true });
     return res.end();
   } catch (error) {
+    if (error?.code === 'CANCELLED' || error?.name === 'AbortError' || jobAbort.signal.aborted) {
+      if (!res.writableEnded) {
+        try {
+          res.end();
+        } catch {
+          // already closed
+        }
+      }
+      return;
+    }
     sendEvent('error', { message: error?.message || 'Failed to generate QA/QC report.' });
     sendEvent('done', { ok: false });
     return res.end();

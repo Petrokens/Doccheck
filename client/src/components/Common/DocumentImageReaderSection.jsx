@@ -280,7 +280,7 @@ export default function DocumentImageReaderSection({
         const raw = String(err?.message || '');
         setLoadError(
           /toHex is not a function/i.test(raw)
-            ? 'Could not preview this PDF in the current engine. Refresh the page and try again, or start QA/QC without preview.'
+            ? 'Could not preview this PDF in the current engine. Use Retry preview, or start QA/QC without preview.'
             : (raw || 'Could not preview this PDF. You can still start QA/QC analysis.'),
         );
       } finally {

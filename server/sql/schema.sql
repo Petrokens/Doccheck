@@ -1,5 +1,5 @@
--- Petrolenz QA/QC — PostgreSQL schema
--- psql -U postgres -d petrolenz_qaqc -f sql/schema.sql
+-- DocCheck AI QA/QC — PostgreSQL schema
+-- psql -U postgres -d doccheck_qaqc -f sql/schema.sql
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 

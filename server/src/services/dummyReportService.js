@@ -5,7 +5,7 @@ function generateDummyQaQcReport({ documentType, mainDocumentName, supportDocume
 **Document Title:** ${documentType || 'Engineering Document'}
 **Main document:** ${mainDocumentName || 'N/A'}
 **Support document:** ${supportDocumentName || 'Not provided'}
-**Tool:** Petrolens QA/QC Report Engine
+**Tool:** DocCheck AI QA/QC Report Engine
 **Mode:** Demo fallback (configure OPENAI_API_KEY for live analysis)
 
 ## SECTION 2: EXECUTIVE SUMMARY DASHBOARD
@@ -20,7 +20,7 @@ function generateDummyQaQcReport({ documentType, mainDocumentName, supportDocume
 ## SECTION 3: SYSTEM INITIALIZATION
 | Item | Value |
 | --- | --- |
-| Engine | Petrolens QA/QC Report Engine |
+| Engine | DocCheck AI QA/QC Report Engine |
 | Rule library | 4000-rule engineering QA library |
 | Mode | Demo fallback |
 | Document type | ${documentType || 'Engineering Document'} |

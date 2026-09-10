@@ -1,5 +1,5 @@
 {
-  "name": "petrolenz-qaqc-server",
+  "name": "doccheck-qaqc-server",
   "version": "1.0.0",
   "private": true,
   "main": "index.js",

@@ -118,7 +118,7 @@ function shouldSkipMarkdownLine(line, index) {
   const t = String(line || '').trim();
   if (!t) return false;
   if (index < 40) {
-    if (/^#+\s*PETROLENS/i.test(t)) return true;
+    if (/^#+\s*(PETROLENS|PETROLENZ|DOCCHECK)/i.test(t)) return true;
     if (/^#+\s*WITH INTEGRATED/i.test(t)) return true;
     if (/^#+\s*LIBRARY\s*$/i.test(t)) return true;
     if (/^\*\*Document type:\*\*/i.test(t)) return true;

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Download, RefreshCw } from 'lucide-react';
+import { Download } from 'lucide-react';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -11,9 +10,12 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { APP_VERSION } from '@/config';
 import { fetchAppVersion } from '@/services/appVersionService';
 import { isOutdated } from '@/lib/appVersion';
+import { onAppRefresh } from '@/lib/appRefresh';
 
 const DISMISS_KEY = 'doccheck-dismissed-app-version';
 const CHECK_MS = 10 * 60 * 1000;
@@ -57,7 +59,11 @@ export default function AppUpdateDialog() {
   useEffect(() => {
     check();
     const timer = setInterval(check, CHECK_MS);
-    return () => clearInterval(timer);
+    const stop = onAppRefresh(check);
+    return () => {
+      clearInterval(timer);
+      stop();
+    };
   }, [check]);
 
   if (!update) return null;
@@ -67,12 +73,16 @@ export default function AppUpdateDialog() {
     setUpdate(null);
   };
 
-  const applyUpdate = () => {
+  const applyUpdate = (event) => {
+    event?.preventDefault?.();
     if (update.downloadUrl) {
       window.open(update.downloadUrl, '_blank', 'noopener,noreferrer');
       return;
     }
-    window.location.reload();
+    toast.message(`Install DocCheck AI v${update.version}, then restart the app.`, {
+      description: `This copy is still v${update.current}. A page refresh cannot install the new version.`,
+    });
+    if (!update.forceUpdate) dismiss();
   };
 
   return (
@@ -101,9 +111,9 @@ export default function AppUpdateDialog() {
           {update.forceUpdate ? null : (
             <AlertDialogCancel onClick={dismiss}>Later</AlertDialogCancel>
           )}
-          <AlertDialogAction onClick={applyUpdate}>
-            <RefreshCw /> Update now
-          </AlertDialogAction>
+          <Button type="button" onClick={applyUpdate}>
+            <Download /> {update.downloadUrl ? 'Download update' : 'Got it'}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

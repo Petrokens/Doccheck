@@ -15,8 +15,6 @@ const AUTH_INPUT = 'h-11 bg-[#f4f7fb] text-slate-900 placeholder:text-slate-400 
 
 function readRememberedEmail() {
   try {
-    localStorage.removeItem('petrolenz.savedLogin');
-    localStorage.removeItem('petrolenz.rememberEmail');
     localStorage.removeItem('docucheck.rememberEmail');
     return localStorage.getItem(REMEMBER_EMAIL_KEY) || '';
   } catch {
