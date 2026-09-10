@@ -19,7 +19,6 @@ This is a standalone document quality assurance product. It does not include TBE
 - **Desktop:** Electron wrapper around the web app
 - **Server:** Node.js, Express, PostgreSQL
 - **AI:** OpenAI (primary) with Groq fallback
-- **Email:** SMTP only (OTP, credentials, password reset)
 - **OCR:** PaddleOCR (preferred) + Tesseract fallback, pdf-parse, mammoth
 
 ## Run locally
@@ -33,7 +32,7 @@ psql -U postgres -d doccheck_qaqc -f server/sql/schema.sql
 # 2. Server
 cd server
 copy .env.example .env
-# edit DATABASE_URL, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, OPENAI_API_KEY, SMTP_*
+# edit DATABASE_URL, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, OPENAI_API_KEY
 npm install
 npm run dev
 
@@ -54,7 +53,7 @@ Open http://localhost:5174 (or the port Vite prints).
 
 Default master user is created on first server start (`MASTER_EMAIL` / `MASTER_PASSWORD` in `.env`).
 
-Login uses email, password, and a one-time code emailed via **SMTP**. Set `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` in `server/.env`.
+Login uses email and password. Master Admins create accounts and share credentials with users.
 
 ### Desktop (Electron)
 
@@ -87,21 +86,6 @@ npm run build:portable
 npm run build:dir
 ```
 
-## Email (SMTP only)
-
-Configure these in `server/.env`:
-
-```
-SMTP_HOST=smtp.yourprovider.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your@email.com
-SMTP_PASS=your-app-password
-SMTP_FROM=DocCheck AI <noreply@yourdomain.com>
-```
-
-Use port `465` with `SMTP_SECURE=true` if your provider requires SSL. Resend and other API mail providers are not used.
-
 ## Security
 
 Hardening for both API and SPA is documented in:
@@ -130,12 +114,10 @@ Interactive docs: **Swagger UI** at `http://localhost:5000/api/docs` (OpenAPI JS
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/api/auth/login` | Password step — emails OTP via SMTP |
-| POST | `/api/auth/login/verify-otp` | Complete login with email code |
-| POST | `/api/auth/login/resend-otp` | Resend login OTP |
+| POST | `/api/auth/login` | Email and password login |
 | POST | `/api/auth/refresh` | Refresh cookie |
 | POST | `/api/auth/logout` | Logout |
-| POST | `/api/auth/register` | Admin create user (emails credentials) |
+| POST | `/api/auth/register` | Admin create user |
 | GET | `/api/users` | User list |
 | GET/POST | `/api/roles` | Roles |
 | GET | `/api/permissions` | Permissions |

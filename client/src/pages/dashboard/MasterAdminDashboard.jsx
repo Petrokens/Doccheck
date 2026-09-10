@@ -109,19 +109,10 @@ export function UserManagement() {
     event.preventDefault();
     setSaving(true);
     try {
-      const created = await createUser(form);
-      const emailedTo = form.email.trim();
+      await createUser(form);
       setForm(EMPTY_USER_FORM);
       setFormOpen(false);
-      if (created?.email_sent) {
-        toast.success(`User created. Login credentials emailed to ${emailedTo}`);
-      } else {
-        toast.warning(
-          created?.email_error
-            ? `User created, but email failed: ${created.email_error}`
-            : `User created, but credentials email was not sent to ${emailedTo}. Check SMTP settings and spam.`,
-        );
-      }
+      toast.success('User created. Share the login email and password with them.');
       load();
     } catch (err) {
       toast.error(publicApiError(err, 'Could not create user'));
@@ -263,7 +254,7 @@ export function UserManagement() {
             <DialogHeader>
               <DialogTitle>Add user</DialogTitle>
               <DialogDescription>
-                Login credentials are emailed to this address. Password must be 12+ characters with upper, lower, number, and symbol.
+                Share the email and password with the user. Password must be 12+ characters with upper, lower, number, and symbol.
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4 space-y-3">

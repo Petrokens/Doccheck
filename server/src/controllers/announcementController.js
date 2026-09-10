@@ -1,9 +1,5 @@
 const announcementRepo = require('../db/repositories/announcementRepository');
-const userRepo = require('../db/repositories/userRepository');
 const roleRepo = require('../db/repositories/roleRepository');
-const { sendEmail } = require('../utils/sendEmail');
-const { announcementEmail } = require('../utils/emailTemplates');
-const { mapWithConcurrency } = require('../utils/asyncPool');
 const { audit } = require('../security/audit');
 const { publicError, internalError } = require('../security/httpErrors');
 const { isMasterRole } = require('../security/sidebarAccess');
@@ -46,46 +42,13 @@ exports.createAnnouncement = async (req, res) => {
       roleIds,
     });
 
-    const recipients = await userRepo.findByRoleIds(roleIds);
-    let sentCount = 0;
-    let failedCount = 0;
-    const results = await mapWithConcurrency(recipients, 4, async (user) => {
-      if (!user?.email) return { skipped: true };
-      const mail = announcementEmail({ title, body, username: user.username });
-      try {
-        const sent = await sendEmail({ to: user.email, ...mail });
-        if (sent.skipped) return { skipped: true };
-        return { sent: true };
-      } catch (error) {
-        console.warn(`Announcement email failed for ${user.email}:`, error?.message || error);
-        return { failed: true };
-      }
-    });
-    results.forEach((result) => {
-      if (result?.sent) sentCount += 1;
-      if (result?.failed) failedCount += 1;
-    });
-
-    if (sentCount > 0) {
-      await announcementRepo.markEmailed(announcement.id, sentCount);
-    }
-
     const saved = await announcementRepo.findById(announcement.id);
     audit('announcement.create', {
       actor: req.user.user_id,
       id: announcement.id,
       roles: roleIds,
-      emailed: sentCount,
     });
-    return res.status(201).json({
-      announcement: saved,
-      email: {
-        recipients: recipients.length,
-        sent: sentCount,
-        failed: failedCount,
-        skipped: Math.max(0, recipients.length - sentCount - failedCount),
-      },
-    });
+    return res.status(201).json({ announcement: saved });
   } catch (error) {
     return internalError(res, error, 'Failed to create announcement');
   }

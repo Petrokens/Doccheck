@@ -26,11 +26,7 @@ api.interceptors.response.use(
     const url = originalRequest?.url || '';
     const isAuthPublic =
       url.includes('/auth/login') ||
-      url.includes('/auth/login/verify-otp') ||
-      url.includes('/auth/login/resend-otp') ||
-      url.includes('/auth/refresh') ||
-      url.includes('/auth/forgot-password') ||
-      url.includes('/auth/reset-password');
+      url.includes('/auth/refresh');
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthPublic) {
       originalRequest._retry = true;
       try {

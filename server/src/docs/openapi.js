@@ -47,14 +47,14 @@ function buildOpenApiSpec({ serverUrl } = {}) {
     servers: [{ url: serverUrl || '/', description: 'DocCheck AI API' }],
     tags: [
       { name: 'Health', description: 'Liveness' },
-      { name: 'Auth', description: 'Session, password reset, profile' },
+      { name: 'Auth', description: 'Session and profile' },
       { name: 'QA/QC', description: 'Report generate, history, PDF' },
       { name: 'Sidebar', description: 'Dashboard navigation' },
       { name: 'Users', description: 'Master-only user administration' },
       { name: 'Roles', description: 'Master-only role administration' },
       { name: 'Permissions', description: 'Master-only permission catalog' },
       { name: 'System', description: 'Runtime logs and health' },
-      { name: 'Announcements', description: 'Role-based notices and email' },
+      { name: 'Announcements', description: 'Role-based notices' },
     ],
     paths: {
       '/api/health': {
@@ -114,7 +114,7 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           tags: ['Auth'],
           summary: 'Login',
           description:
-            'Validates email and password, then emails a 6-digit OTP. The session is issued only after `POST /api/auth/login/verify-otp`. Five failed password attempts lock the account for 15 minutes (`423`). Rate limit: 8 / 15 min / IP.',
+            'Validates email and password and issues a session. Returns an access JWT and sets a rotated httpOnly refresh cookie. Five failed password attempts lock the account for 15 minutes (`423`). Rate limit: 8 / 15 min / IP.',
           operationId: 'login',
           security: [],
           parameters: trustedOriginParams,
@@ -123,49 +123,6 @@ function buildOpenApiSpec({ serverUrl } = {}) {
             ...jsonContent(
               { $ref: '#/components/schemas/LoginRequest' },
               { email: 'admin@doccheck.com', password: 'your-password' },
-            ),
-          },
-          responses: {
-            200: {
-              description: 'OTP sent. Complete login with `/api/auth/login/verify-otp`.',
-              ...jsonContent(
-                { $ref: '#/components/schemas/LoginOtpChallengeResponse' },
-                {
-                  requiresOtp: true,
-                  challengeId: '3f1c8a2e-4b9d-4f11-9c0a-1d2e3f4a5b6c',
-                  emailMasked: 'a***@doccheck.com',
-                  message: 'Enter the verification code sent to your email.',
-                },
-              ),
-            },
-            400: errorResponse('Missing credentials', 'Email and password are required.'),
-            401: errorResponse('Invalid credentials', 'Invalid email or password.'),
-            423: errorResponse('Account locked', 'Account temporarily locked. Try again later.'),
-            429: errorResponse('Rate limited', 'Too many login attempts. Try again after 15 minutes.'),
-          },
-        },
-      },
-
-      '/api/auth/login/verify-otp': {
-        post: {
-          tags: ['Auth'],
-          summary: 'Verify login OTP',
-          description: 'Completes login after `/api/auth/login`. Returns an access JWT and sets a rotated httpOnly refresh cookie.',
-          operationId: 'verifyLoginOtp',
-          security: [],
-          parameters: trustedOriginParams,
-          requestBody: {
-            required: true,
-            ...jsonContent(
-              {
-                type: 'object',
-                required: ['challengeId', 'otp'],
-                properties: {
-                  challengeId: { type: 'string', format: 'uuid' },
-                  otp: { type: 'string', example: '123456' },
-                },
-              },
-              { challengeId: '3f1c8a2e-4b9d-4f11-9c0a-1d2e3f4a5b6c', otp: '123456' },
             ),
           },
           responses: {
@@ -182,37 +139,10 @@ function buildOpenApiSpec({ serverUrl } = {}) {
                 { message: 'Login successful', accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
               ),
             },
-            400: errorResponse('Invalid or expired code', 'Invalid or expired verification code. Sign in again.'),
-            401: errorResponse('Wrong code', 'Invalid verification code.'),
-            429: errorResponse('Rate limited', 'Too many verification attempts. Try again later.'),
-          },
-        },
-      },
-
-      '/api/auth/login/resend-otp': {
-        post: {
-          tags: ['Auth'],
-          summary: 'Resend login OTP',
-          operationId: 'resendLoginOtp',
-          security: [],
-          parameters: trustedOriginParams,
-          requestBody: {
-            required: true,
-            ...jsonContent(
-              {
-                type: 'object',
-                required: ['challengeId'],
-                properties: { challengeId: { type: 'string', format: 'uuid' } },
-              },
-              { challengeId: '3f1c8a2e-4b9d-4f11-9c0a-1d2e3f4a5b6c' },
-            ),
-          },
-          responses: {
-            200: {
-              description: 'New OTP emailed',
-              ...jsonContent({ $ref: '#/components/schemas/LoginOtpChallengeResponse' }),
-            },
-            400: errorResponse('Session expired', 'Verification session expired. Sign in again.'),
+            400: errorResponse('Missing credentials', 'Email and password are required.'),
+            401: errorResponse('Invalid credentials', 'Invalid email or password.'),
+            423: errorResponse('Account locked', 'Account temporarily locked. Try again later.'),
+            429: errorResponse('Rate limited', 'Too many login attempts. Try again after 15 minutes.'),
           },
         },
       },
@@ -255,59 +185,6 @@ function buildOpenApiSpec({ serverUrl } = {}) {
             401: errorResponse('Cookie missing', 'Refresh token missing'),
             403: errorResponse('Invalid refresh token', 'Invalid or expired refresh token'),
             429: errorResponse('Rate limited', 'Too many session refresh attempts.'),
-          },
-        },
-      },
-
-      '/api/auth/forgot-password': {
-        post: {
-          tags: ['Auth'],
-          summary: 'Request password reset',
-          description:
-            'Always returns the same message (no email enumeration). Rate limit: 5 / 15 min / IP. Reset link is emailed when the address exists.',
-          operationId: 'forgotPassword',
-          security: [],
-          parameters: trustedOriginParams,
-          requestBody: {
-            required: true,
-            ...jsonContent({ $ref: '#/components/schemas/ForgotPasswordRequest' }, { email: 'user@doccheck.local' }),
-          },
-          responses: {
-            200: {
-              description: 'Accepted',
-              ...jsonContent(
-                { $ref: '#/components/schemas/Message' },
-                { message: 'If that email is registered, a reset link was sent.' },
-              ),
-            },
-            400: errorResponse('Email required', 'Email is required.'),
-            429: errorResponse('Rate limited', 'Too many password requests. Try again later.'),
-          },
-        },
-      },
-
-      '/api/auth/reset-password': {
-        post: {
-          tags: ['Auth'],
-          summary: 'Reset password',
-          description: 'Consumes a 30-minute reset token and invalidates the existing session.',
-          operationId: 'resetPassword',
-          security: [],
-          parameters: trustedOriginParams,
-          requestBody: {
-            required: true,
-            ...jsonContent(
-              { $ref: '#/components/schemas/ResetPasswordRequest' },
-              { token: 'hex-token-from-email', password: 'NewPassword123!' },
-            ),
-          },
-          responses: {
-            200: {
-              description: 'Password updated',
-              ...jsonContent({ $ref: '#/components/schemas/Message' }, { message: 'Password updated.' }),
-            },
-            400: errorResponse('Invalid token or password policy', 'Invalid or expired reset token.'),
-            429: errorResponse('Rate limited', 'Too many password requests. Try again later.'),
           },
         },
       },
@@ -571,8 +448,8 @@ function buildOpenApiSpec({ serverUrl } = {}) {
         },
         post: {
           tags: ['Announcements'],
-          summary: 'Create announcement and email selected roles',
-          description: 'Master-only. Saves the notice and emails every user in the selected roles via SMTP.',
+          summary: 'Create announcement',
+          description: 'Master-only. Saves the notice for every user in the selected roles.',
           operationId: 'createAnnouncement',
           security: bearer,
           parameters: trustedOriginParams,
@@ -914,7 +791,6 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           type: 'object',
           properties: {
             message: { type: 'string' },
-            email_sent: { type: 'boolean' },
             user: { $ref: '#/components/schemas/User' },
           },
         },
@@ -924,15 +800,6 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           properties: {
             email: { type: 'string', format: 'email' },
             password: { type: 'string' },
-          },
-        },
-        LoginOtpChallengeResponse: {
-          type: 'object',
-          properties: {
-            requiresOtp: { type: 'boolean' },
-            challengeId: { type: 'string', format: 'uuid' },
-            emailMasked: { type: 'string' },
-            message: { type: 'string' },
           },
         },
         LoginResponse: {
@@ -945,19 +812,6 @@ function buildOpenApiSpec({ serverUrl } = {}) {
         AccessTokenResponse: {
           type: 'object',
           properties: { accessToken: { type: 'string' } },
-        },
-        ForgotPasswordRequest: {
-          type: 'object',
-          required: ['email'],
-          properties: { email: { type: 'string', format: 'email' } },
-        },
-        ResetPasswordRequest: {
-          type: 'object',
-          required: ['token', 'password'],
-          properties: {
-            token: { type: 'string' },
-            password: { type: 'string', minLength: 12 },
-          },
         },
         User: {
           type: 'object',

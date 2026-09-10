@@ -94,15 +94,4 @@ async function listForRole({ roleId, isMaster }) {
   return rows.map(mapRow);
 }
 
-async function markEmailed(id, recipientCount) {
-  const { rows } = await pool.query(
-    `UPDATE announcements
-     SET email_sent = TRUE, email_sent_at = NOW(), recipient_count = $2, updated_at = NOW()
-     WHERE id = $1
-     RETURNING *`,
-    [id, recipientCount],
-  );
-  return rows[0] || null;
-}
-
-module.exports = { create, findById, listForRole, markEmailed };
+module.exports = { create, findById, listForRole };

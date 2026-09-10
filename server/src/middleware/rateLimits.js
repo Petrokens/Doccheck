@@ -16,28 +16,12 @@ const loginLimiter = rateLimit({
   message: { error: 'Too many login attempts. Try again after 15 minutes.' },
 });
 
-const passwordLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many password requests. Try again later.' },
-});
-
 const refreshLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 40,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many session refresh attempts.' },
-});
-
-const otpLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 15,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many verification attempts. Try again later.' },
 });
 
 const generateLimiter = rateLimit({
@@ -48,4 +32,4 @@ const generateLimiter = rateLimit({
   message: { error: 'QA/QC generation rate limit reached. Try again later.' },
 });
 
-module.exports = { globalLimiter, loginLimiter, passwordLimiter, refreshLimiter, otpLimiter, generateLimiter };
+module.exports = { globalLimiter, loginLimiter, refreshLimiter, generateLimiter };

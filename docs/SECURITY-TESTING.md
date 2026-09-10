@@ -16,7 +16,7 @@ Testing is allowed only when:
 - You are using the provided test environment (not production customer data)
 - You stay inside the scope below
 
-Do not test third-party services (OpenAI, Groq, email providers, or the tester’s own browser extensions).
+Do not test third-party services (OpenAI, Groq, or the tester’s own browser extensions).
 
 ---
 
@@ -78,8 +78,6 @@ Testers should **confirm these controls hold**, and report any bypass.
 - [ ] Access token expires (~15 minutes); refresh issues a new access token
 - [ ] Refresh token cannot be read from JavaScript (`httpOnly`)
 - [ ] Logout ends the refresh session
-- [ ] Password reset does not confirm whether an email is registered
-- [ ] Password reset invalidates the previous session
 - [ ] New passwords reject weak values (short / no complexity)
 
 ### Access control

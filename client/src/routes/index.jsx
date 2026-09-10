@@ -3,8 +3,6 @@ import { SessionAuthProvider } from '@/context/SessionAuthContext';
 import { ProtectedRoute, PublicAuthRoute, RoleProtectedRoute } from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import LoginPage from '@/pages/auth/Login';
-import ForgotPasswordPage from '@/pages/auth/ForgotPassword';
-import ResetPasswordPage from '@/pages/auth/ResetPassword';
 import DisciplineWorkspace from '@/pages/dashboard/DisciplineWorkspace';
 import History from '@/pages/dashboard/History';
 import AIReview from '@/pages/dashboard/AIReview';
@@ -29,8 +27,6 @@ function AppRoutesInner() {
   return (
     <Routes>
       <Route path="/login" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
-      <Route path="/forgot-password" element={<PublicAuthRoute><ForgotPasswordPage /></PublicAuthRoute>} />
-      <Route path="/reset-password" element={<PublicAuthRoute><ResetPasswordPage /></PublicAuthRoute>} />
       <Route
         path="/dashboard"
         element={

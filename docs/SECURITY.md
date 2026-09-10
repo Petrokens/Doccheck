@@ -11,7 +11,7 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 
 | Objective                               | How it is met                                                         |
 | --------------------------------------- | --------------------------------------------------------------------- |
-| Confidentiality of reports and accounts | Authenticated APIs, report ownership, hashed refresh/reset tokens     |
+| Confidentiality of reports and accounts | Authenticated APIs, report ownership, hashed refresh tokens           |
 | Integrity of users and roles            | Master-only admin APIs, no caller-chosen privilege on public register |
 | Availability                            | Rate limits, upload size/type limits, lockout                         |
 | Session safety                          | Short-lived access JWT in memory, httpOnly refresh cookie, rotation   |
@@ -42,7 +42,7 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 - Stored in an **httpOnly**, **Secure** (production), **SameSite=lax** cookie, path `/api/auth`.
 - **SHA-256 hash** stored in PostgreSQL, never the raw token.
 - **Rotated** on every successful refresh and login.
-- Logout and password reset clear the stored refresh hash.
+- Logout clears the stored refresh hash.
 
 
 
@@ -52,16 +52,8 @@ Related: [SECURITY-TESTING.md](./SECURITY-TESTING.md) (authorized testing brief)
 - Dummy bcrypt compare when the email does not exist (timing).
 - 5 failed attempts → 15-minute account lock (`423`).
 - Login rate limit: 8 attempts / 15 minutes / IP.
-- Password policy for new/reset passwords: 12+ characters, upper, lower, digit, symbol.
+- Password policy for new passwords: 12+ characters, upper, lower, digit, symbol.
 - bcrypt cost factor **12**.
-
-
-
-### Password reset
-
-- Reset token is 32 random bytes, stored as SHA-256, 30-minute expiry.
-- Response is always the same whether the email exists or not.
-- Successful reset invalidates the session (refresh token cleared).
 
 ---
 
@@ -163,7 +155,6 @@ Parser libraries still process untrusted files (PDF/Office/OCR). Size and type l
 | ----------------------- | ----------------- |
 | Global                  | 400 / 15 min / IP |
 | Login                   | 8 / 15 min        |
-| Forgot / reset password | 5 / 15 min        |
 | Refresh                 | 40 / 15 min       |
 | QA/QC generation        | 12 / hour         |
 
@@ -210,7 +201,7 @@ Default listen address in development: `127.0.0.1`. Use `BIND_HOST=0.0.0.0` only
 
 The API writes JSON audit lines to stdout, including:
 
-`auth.login`, `auth.login_failed`, `auth.lockout`, `auth.logout`, `auth.reset_requested`, `auth.password_reset`, `user.register`, `report.generate`, `report.update`, `report.delete`, `report.download`, `admin.user_delete`, `admin.role_create`, `admin.permissions_set`.
+`auth.login`, `auth.login_failed`, `auth.lockout`, `auth.logout`, `user.register`, `report.generate`, `report.update`, `report.delete`, `report.download`, `admin.user_delete`, `admin.role_create`, `admin.permissions_set`.
 
 Ship these logs to your SIEM in production.
 
