@@ -52,6 +52,9 @@ async function createAndSendLoginOtp(user) {
     otpHash: hashToken(`${challengeId}:${otp}`),
     expiresAt: new Date(Date.now() + OTP_TTL_MS),
   });
+  if (String(process.env.NODE_ENV || '').trim() !== 'production') {
+    console.log(`[auth] login OTP for ${maskEmail(user.email)} challenge=${challengeId}: ${otp}`);
+  }
   const mail = loginOtpEmail({ username: user.username, otp });
   try {
     const sent = await sendEmail({ to: user.email, ...mail });
@@ -229,7 +232,11 @@ exports.verifyLoginOtp = async (req, res) => {
       const attempts = await otpRepo.incrementAttempts(challengeId);
       if (attempts >= OTP_MAX_ATTEMPTS) await otpRepo.consume(challengeId);
       audit('auth.otp_failed', { user_id: challenge.user_id, ip: clientIp(req), attempts });
-      return publicError(res, 401, 'Invalid verification code.');
+      return publicError(
+        res,
+        401,
+        'Invalid verification code. If you requested a new code, use only the latest email.',
+      );
     }
     const user = await userRepo.findByUserId(challenge.user_id);
     if (!user) return publicError(res, 400, 'Invalid or expired verification code. Sign in again.');

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginUser, resendLoginOtp, verifyLoginOtp } from '@/services/authService';
 import { useSessionAuth } from '@/context/SessionAuthContext';
@@ -31,6 +31,7 @@ export default function LoginForm() {
   const [otpStep, setOtpStep] = useState(null);
   const [otp, setOtp] = useState('');
   const [resendIn, setResendIn] = useState(0);
+  const busyRef = useRef(false);
   const navigate = useNavigate();
   const { markLoggedIn } = useSessionAuth();
 
@@ -54,6 +55,8 @@ export default function LoginForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (busyRef.current) return;
+    busyRef.current = true;
     setLoading(true);
     try {
       const data = await loginUser(form);
@@ -71,26 +74,31 @@ export default function LoginForm() {
     } catch (err) {
       toast.error(publicApiError(err, 'Login failed'));
     } finally {
+      busyRef.current = false;
       setLoading(false);
     }
   };
 
   const handleVerify = async (e) => {
     e.preventDefault();
-    if (!otpStep?.challengeId) return;
+    if (!otpStep?.challengeId || busyRef.current) return;
+    busyRef.current = true;
     setLoading(true);
     try {
       const data = await verifyLoginOtp({ challengeId: otpStep.challengeId, otp });
       await finishLogin(data.accessToken);
     } catch (err) {
-      toast.error(publicApiError(err, 'Invalid verification code'));
+      toast.error(publicApiError(err, 'Invalid verification code. Use the latest email code.'));
+      setOtp('');
     } finally {
+      busyRef.current = false;
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
-    if (!otpStep?.challengeId || resendIn > 0) return;
+    if (!otpStep?.challengeId || resendIn > 0 || busyRef.current) return;
+    busyRef.current = true;
     setLoading(true);
     try {
       const data = await resendLoginOtp({ challengeId: otpStep.challengeId });
@@ -100,10 +108,11 @@ export default function LoginForm() {
       });
       setOtp('');
       setResendIn(60);
-      toast.success('A new code was sent');
+      toast.success('New code sent — older codes no longer work');
     } catch (err) {
       toast.error(publicApiError(err, 'Could not resend code'));
     } finally {
+      busyRef.current = false;
       setLoading(false);
     }
   };
@@ -115,7 +124,7 @@ export default function LoginForm() {
       </h1>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
         {otpStep
-          ? `Enter the 6-digit code sent to ${otpStep.emailMasked}`
+          ? `Enter the latest 6-digit code sent to ${otpStep.emailMasked}. Older codes are invalid.`
           : 'Access your QA/QC workspace with your work email.'}
       </p>
 
@@ -126,10 +135,12 @@ export default function LoginForm() {
               Email verification code
             </Label>
             <Input
+              key={otpStep.challengeId}
               id="otp"
               name="otp"
               inputMode="numeric"
               autoComplete="one-time-code"
+              autoFocus
               required
               maxLength={6}
               value={otp}
