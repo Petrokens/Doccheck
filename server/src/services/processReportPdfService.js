@@ -117,12 +117,14 @@ function withSerialColumn(header, rows) {
 function shouldSkipMarkdownLine(line, index) {
   const t = String(line || '').trim();
   if (!t) return false;
+  // Title is drawn once by the PDF header — skip duplicate markdown H1.
+  if (/^#+\s*DOCCHECK QA\/QC Report\s*$/i.test(t)) return true;
   if (index < 40) {
-    if (/^#+\s*(PETROLENS|PETROLENZ|DOCCHECK)/i.test(t) && !/^#+\s*DOCCHECK QA\/QC Report\s*$/i.test(t)) return true;
+    if (/^#+\s*(PETROLENS|PETROLENZ|DOCCHECK)/i.test(t)) return true;
     if (/^#+\s*WITH INTEGRATED/i.test(t)) return true;
     if (/^#+\s*RULE-BASED ENGINEERING/i.test(t)) return true;
     if (/^#+\s*LIBRARY\s*$/i.test(t)) return true;
-    if (/^#+\s*.+QA\/QC Report\s*$/i.test(t) && !/^#+\s*DOCCHECK QA\/QC Report\s*$/i.test(t)) return true;
+    if (/^#+\s*.+QA\/QC Report\s*$/i.test(t)) return true;
     if (/4000-?RULE|4,?000\+?\s*Rules/i.test(t) && index < 10) return true;
     if (/^\*\*Document type:\*\*/i.test(t)) return true;
     if (/^\*\*Main document/i.test(t)) return true;
@@ -165,9 +167,16 @@ function streamProcessReportPdf(res, report) {
   res.setHeader('Content-Disposition', `inline; filename="${filename}.pdf"`);
 
   const margin = 46;
-  const footerReserve = 36;
+  const footerReserve = 44;
   const headerBand = 42;
-  const doc = new PDFDocument({ size: 'A4', margin, bufferPages: true });
+  // Bottom margin must cover the footer band so PDFKit never auto-adds blank pages
+  // when content or footers are drawn near the page edge.
+  const doc = new PDFDocument({
+    size: 'A4',
+    margins: { top: margin, left: margin, right: margin, bottom: footerReserve },
+    bufferPages: true,
+    autoFirstPage: true,
+  });
   doc.pipe(res);
 
   const pageLeft = margin;
@@ -179,17 +188,30 @@ function streamProcessReportPdf(res, report) {
     doc.x = pageLeft;
   };
 
+  /** Write in the footer zone without triggering PDFKit's margin page-break. */
+  const withFooterWrite = (fn) => {
+    const prev = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
+    try {
+      fn();
+    } finally {
+      doc.page.margins.bottom = prev;
+    }
+  };
+
   const drawHeaderBand = () => {
     doc.save();
     doc.rect(0, 0, doc.page.width, headerBand).fill(PAPER);
-    doc.fillColor(INK).font('Helvetica-Bold').fontSize(9)
-      .text('DOCCHECK AI', pageLeft, 12, { width: usable * 0.5, lineBreak: false });
-    doc.font('Helvetica').fontSize(8)
-      .text('QA/QC REPORT', pageLeft + usable * 0.5, 12, {
-        width: usable * 0.5,
-        align: 'right',
-        lineBreak: false,
-      });
+    withFooterWrite(() => {
+      doc.fillColor(INK).font('Helvetica-Bold').fontSize(9)
+        .text('DOCCHECK AI', pageLeft, 12, { width: usable * 0.5, lineBreak: false });
+      doc.font('Helvetica').fontSize(8)
+        .text('QA/QC REPORT', pageLeft + usable * 0.5, 12, {
+          width: usable * 0.5,
+          align: 'right',
+          lineBreak: false,
+        });
+    });
     doc.strokeColor(INK).lineWidth(1.4)
       .moveTo(pageLeft, headerBand - 8)
       .lineTo(pageRight, headerBand - 8)
@@ -205,17 +227,21 @@ function streamProcessReportPdf(res, report) {
   };
 
   const newPage = () => {
-    doc.addPage();
+    doc.addPage({
+      size: 'A4',
+      margins: { top: margin, left: margin, right: margin, bottom: footerReserve },
+    });
     drawHeaderBand();
   };
 
   const ensureSpace = (needed) => {
-    if (doc.y + needed > contentBottom()) newPage();
+    const need = Math.max(0, Number(needed) || 0);
+    if (need > 0 && doc.y + need > contentBottom() - 0.5) newPage();
     resetX();
   };
 
   const drawRule = (weight = 0.8, gapAfter = 8) => {
-    ensureSpace(6);
+    ensureSpace(6 + gapAfter);
     doc.strokeColor(INK).lineWidth(weight)
       .moveTo(pageLeft, doc.y)
       .lineTo(pageRight, doc.y)
@@ -237,7 +263,13 @@ function streamProcessReportPdf(res, report) {
     doc.fillColor(color).font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(size);
     const h = doc.heightOfString(String(text || ''), { width, lineGap });
     ensureSpace(h + 2);
-    doc.text(String(text || ''), x, doc.y, { width, lineGap, align, continued: false });
+    doc.text(String(text || ''), x, doc.y, {
+      width,
+      lineGap,
+      align,
+      continued: false,
+      height: Math.max(h + 1, size + 2),
+    });
     resetX();
     return h;
   };
@@ -292,13 +324,19 @@ function streamProcessReportPdf(res, report) {
 
     const paintRow = (cells, headerRow = false) => {
       const naturalH = measureRow(cells, headerRow);
-      const minFit = headerRow ? naturalH : Math.min(naturalH, 22);
-      if (doc.y + minFit > contentBottom()) {
+      const minUseful = headerRow ? naturalH : Math.min(Math.max(naturalH, 18), 28);
+      if (doc.y + minUseful > contentBottom() - 0.5) {
         newPage();
         if (!headerRow) paintRow(header, true);
       }
       const available = contentBottom() - doc.y;
-      const maxH = naturalH > available ? Math.max(available, 15) : naturalH;
+      // Prefer a full new page over a clipped stub row at the bottom.
+      if (!headerRow && naturalH > available + 0.5 && available < 40) {
+        newPage();
+        paintRow(header, true);
+      }
+      const room = contentBottom() - doc.y;
+      const maxH = naturalH > room ? Math.max(room, 16) : naturalH;
       const y = doc.y;
       let x = pageLeft;
       cells.forEach((cell, idx) => {
@@ -312,16 +350,18 @@ function streamProcessReportPdf(res, report) {
         doc.rect(x, y, w, maxH).strokeColor(INK).lineWidth(0.6).stroke();
         const align = ['sno', 'severity', 'status', 'score', 'tag'].includes(kind) ? 'center' : 'left';
         const useBold = headerRow || kind === 'sno' || kind === 'id' || kind === 'label';
-        doc.fillColor(headerRow ? PAPER : INK)
-          .font(useBold ? 'Helvetica-Bold' : 'Helvetica')
-          .fontSize(headerRow ? 7.5 : 8)
-          .text(String(cell || '—'), x + 4, y + 4, {
-            width: w - 8,
-            height: maxH - 6,
-            align,
-            lineGap: 0.7,
-            ellipsis: maxH < naturalH - 0.5,
-          });
+        withFooterWrite(() => {
+          doc.fillColor(headerRow ? PAPER : INK)
+            .font(useBold ? 'Helvetica-Bold' : 'Helvetica')
+            .fontSize(headerRow ? 7.5 : 8)
+            .text(String(cell || '—'), x + 4, y + 4, {
+              width: w - 8,
+              height: maxH - 6,
+              align,
+              lineGap: 0.7,
+              ellipsis: maxH < naturalH - 0.5,
+            });
+        });
         x += w;
       });
       doc.y = y + maxH;
@@ -384,9 +424,14 @@ function streamProcessReportPdf(res, report) {
       const level = (line.match(/^#+/) || ['#'])[0].length;
       const major = isMajorSection(line);
       const size = major || level === 1 ? 11 : level === 2 ? 10 : 9;
-      ensureSpace(size + 32);
-      doc.y += major ? 10 : level === 1 ? 8 : 5;
-      writeText(major ? plainLine(line).toUpperCase() : plainLine(line), { size, bold: true });
+      const padBefore = major ? 8 : level === 1 ? 6 : 4;
+      const heading = major ? plainLine(line).toUpperCase() : plainLine(line);
+      doc.font('Helvetica-Bold').fontSize(size);
+      const textH = doc.heightOfString(heading, { width: usable, lineGap: 1.15 });
+      // One reserve for padding + heading + rule so we never open a blank page.
+      ensureSpace(padBefore + textH + 14);
+      doc.y += padBefore;
+      writeText(heading, { size, bold: true });
       drawRule(major || level <= 2 ? 1 : 0.5, major ? 8 : 6);
       i += 1;
       continue;
@@ -455,7 +500,8 @@ function streamProcessReportPdf(res, report) {
       continue;
     }
 
-    doc.y += 4;
+    // Soft blank — skip if it would only eat the last usable strip on a page.
+    if (doc.y + 18 < contentBottom()) doc.y += 3;
     resetX();
     i += 1;
   }
@@ -463,19 +509,21 @@ function streamProcessReportPdf(res, report) {
   const range = doc.bufferedPageRange();
   for (let p = 0; p < range.count; p += 1) {
     doc.switchToPage(range.start + p);
-    doc.save();
-    const fy = doc.page.height - 22;
-    doc.strokeColor(INK).lineWidth(0.6)
-      .moveTo(pageLeft, fy - 8)
-      .lineTo(pageRight, fy - 8)
-      .stroke();
-    doc.font('Helvetica').fontSize(7.5).fillColor(INK).text(
-      `DocCheck AI  ·  Confidential  ·  Page ${p + 1} of ${range.count}`,
-      pageLeft,
-      fy,
-      { width: usable, align: 'center', lineBreak: false },
-    );
-    doc.restore();
+    withFooterWrite(() => {
+      doc.save();
+      const fy = doc.page.height - 28;
+      doc.strokeColor(INK).lineWidth(0.6)
+        .moveTo(pageLeft, fy - 8)
+        .lineTo(pageRight, fy - 8)
+        .stroke();
+      doc.font('Helvetica').fontSize(7.5).fillColor(INK).text(
+        `DocCheck AI  ·  Confidential  ·  Page ${p + 1} of ${range.count}`,
+        pageLeft,
+        fy,
+        { width: usable, align: 'center', lineBreak: false },
+      );
+      doc.restore();
+    });
   }
 
   doc.end();
