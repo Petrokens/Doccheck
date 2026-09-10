@@ -21,7 +21,7 @@ function generateDummyQaQcReport({ documentType, mainDocumentName, supportDocume
 | Item | Value |
 | --- | --- |
 | Engine | DocCheck AI QA/QC Report Engine |
-| Rule library | 4000-rule engineering QA library |
+| Method | Rule-based engineering QA checks |
 | Mode | Demo fallback |
 | Document type | ${documentType || 'Engineering Document'} |
 
@@ -38,8 +38,8 @@ function generateDummyQaQcReport({ documentType, mainDocumentName, supportDocume
 | Q-01 | [DATA] | Are design conditions stated? | Partial | 7.5 | Partial evidence in extract |
 | Q-02 | [SAFE] | Relief / safeguarding mentioned? | Partial | 7.5 | Needs engineer confirmation |
 
-## SECTION 6: RULE ENGINE EXECUTION
-Applicable rules sampled from the 4,000-rule library based on document type **${documentType}**.
+## SECTION 6: RULE-BASED EXECUTION
+Applicable rule-based checks selected for document type **${documentType}**.
 
 | Rule ID | Description | Severity | Status | Impact |
 | --- | --- | --- | --- | --- |
@@ -68,7 +68,7 @@ Final QC Score = (QA Score × 0.25) + (Technical Score × 0.35) + (Rule Score ×
 ## SECTION 8: FINAL VERDICT AND ACTIONS
 **Status:** Approved with Comments
 
-Configure a live AI key for full Check-1 / Check-2 / 4K-rule scoring on this package.
+Configure a live AI key for full Check-1 / Check-2 / rule-based scoring on this package.
 
 ## SECTION 9: FINDINGS BY PRIORITY
 ### Major

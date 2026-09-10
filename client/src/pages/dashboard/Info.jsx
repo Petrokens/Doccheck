@@ -38,9 +38,9 @@ const CHECKS = [
   },
   {
     id: 'Rule engine',
-    title: '4,000+ Rules',
+    title: 'Rule-Based Checks',
     icon: Library,
-    body: 'Engineering quality & compliance rules. The engine auto-detects document type and discipline, then runs 50–300 relevant rules. Each rule is OK, Partial, Not OK, or N/A with Critical / Major / Minor severity.',
+    body: 'Engineering quality & compliance rules. The engine auto-detects document type and discipline, then runs only the rules that apply. Each rule is OK, Partial, Not OK, or N/A with Critical / Major / Minor severity.',
   },
 ];
 
@@ -48,7 +48,7 @@ const STEPS = [
   { n: 1, label: 'Upload', detail: 'Upload the engineering deliverable (PDF, Word, or image). Optional support file for specs or previous revisions.' },
   { n: 2, label: 'Analyze', detail: 'Live console shows extraction, OCR if needed, and document-type detection.' },
   { n: 3, label: 'Validate', detail: 'Run Check-1 (Standard Completeness) and Check-2 (Technical Review) against the package.' },
-  { n: 4, label: 'Score', detail: 'Apply 4,000+ engineering quality & compliance rules and compute weighted QA/QC scores.' },
+  { n: 4, label: 'Score', detail: 'Apply rule-based engineering quality & compliance checks and compute weighted QA/QC scores.' },
   { n: 5, label: 'Report', detail: 'Review the scored report, save to History, and export PDF.' },
 ];
 

@@ -8,7 +8,7 @@ AI-Powered Engineering Document QA/QC. Login, upload an engineering deliverable,
 
 - **Check-1:** Standard Completeness  
 - **Check-2:** Technical Review  
-- **4,000+ Rules:** Engineering Quality & Compliance  
+- **Rule-Based:** Engineering Quality & Compliance  
 - **Output:** Scored QA/QC Report + PDF
 
 This is a standalone document quality assurance product. It does not include TBE, Cross-Doc, constructability, revision impact, or copilots.
@@ -20,7 +20,7 @@ This is a standalone document quality assurance product. It does not include TBE
 - **Server:** Node.js, Express, PostgreSQL
 - **AI:** OpenAI (primary) with Groq fallback
 - **Email:** SMTP only (OTP, credentials, password reset)
-- **OCR:** pdf-parse, mammoth, Tesseract
+- **OCR:** PaddleOCR (preferred) + Tesseract fallback, pdf-parse, mammoth
 
 ## Run locally
 
@@ -36,6 +36,13 @@ copy .env.example .env
 # edit DATABASE_URL, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, OPENAI_API_KEY, SMTP_*
 npm install
 npm run dev
+
+# 2b. PaddleOCR service (optional but recommended for scanned / image pages)
+# In another terminal, from server/:
+npm run ocr:install
+npm run ocr:dev
+# Node uses PaddleOCR when http://127.0.0.1:8866 is healthy; otherwise Tesseract.
+# Set OCR_MODE=full in .env to run raster OCR on every page (not only weak-text pages).
 
 # 3. Client (new terminal)
 cd client

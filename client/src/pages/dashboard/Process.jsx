@@ -44,10 +44,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PADDLEOCR_URL } from '@/config';
 
 const DEFAULT_INITIAL_LOGS = [
   'DocCheck AI Engine Ready',
-  'Advanced OCR online: MuPDF raster + Tesseract LSTM + Sharp enhance.',
+  `Advanced OCR online: PaddleOCR @ ${PADDLEOCR_URL} (Tesseract fallback) + MuPDF raster.`,
   'Vision image analysis enabled for scanned pages and drawings.',
   'Awaiting project document upload.',
 ];

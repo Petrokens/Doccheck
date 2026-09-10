@@ -65,7 +65,7 @@ function footerBlock(generatedAtIso) {
     '---',
     '',
     `**Report Generated:** ${toHumanDateTime(generatedAtIso)}`,
-    '**Report Engine:** DocCheck AI QA/QC Report Engine v4.2 | Rule Library: 4,000 Rules | Batch Execution: 40/40',
+    '**Report Engine:** DocCheck AI QA/QC Report Engine v4.2 | Method: Rule-based engineering QA',
     '**Confidentiality:** Project-Sensitive | Distribution: Authorized Personnel Only',
     '',
     '---',
@@ -117,7 +117,7 @@ async function buildProcessReport({
   emit(`Main document(s) parsed (${mainText.length} chars from ${mains.length} file(s)).`);
   if (supports.length) emit(`Support document(s) parsed (${supportText.length} chars from ${supports.length} file(s)).`);
 
-  emit('Preparing AI & 4000 Rule Engine LLM payload...');
+  emit('Preparing DocCheck AI rule-based QA/QC payload...');
   let pulse = 0;
   const timer = setInterval(() => {
     try {
@@ -149,27 +149,15 @@ async function buildProcessReport({
   emit('Computing Section 7.3 Final QC Score from Check-1, Check-2, Rule, and Interface weights...');
 
   const generatedAtIso = new Date().toISOString();
-  const formatList = (names) => (names.length ? names.map((n, i) => `${i + 1}. ${n}`).join('\n') : 'Not provided');
   const scoredMarkdown = applyConsolidatedScoring(sanitizeMarkdown(String(aiMarkdown || '').trim()), {
     hasSupportDocument: supports.length > 0,
   });
   const report_markdown = [
-    '# DOCCHECK AI QA/QC REPORT ENGINE',
-    '# WITH INTEGRATED 4000-RULE ENGINEERING QA RULE',
-    '# LIBRARY',
+    '# DOCCHECK QA/QC Report',
     '',
-    `# ${reportCategory} QA/QC Report`,
+    scoredMarkdown.trim(),
     '',
-    `**Document type:** ${documentType || 'Engineering Document'}`,
-    '**Main document(s):**',
-    formatList(mains.map((m) => m.originalname)),
-    '**Support document(s):**',
-    formatList(supports.map((f) => f.originalname)),
-    `**Generated at:** ${generatedAtIso}`,
-    '',
-    '---',
-    '',
-    `${scoredMarkdown}\n\n${footerBlock(generatedAtIso)}`,
+    footerBlock(generatedAtIso),
     '',
   ].join('\n');
 
@@ -184,7 +172,7 @@ async function buildProcessReport({
     report_markdown,
     report_structured: null,
     workflow: 'qaqc',
-    report_title: `${reportCategory} QA/QC Report`,
+    report_title: 'DOCCHECK QA/QC Report',
     prompt_tokens: Number(usage.prompt_tokens || 0),
     completion_tokens: Number(usage.completion_tokens || 0),
     total_tokens: Number(usage.total_tokens || 0),
@@ -251,16 +239,19 @@ exports.generateProcessReport = async (req, res) => {
 
 exports.generateProcessReportStream = async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
   const jobAbort = new AbortController();
   const onClientGone = () => {
     if (!jobAbort.signal.aborted) jobAbort.abort();
   };
+  // Abort only when the *response* connection drops. `req.close` fires when the
+  // multipart upload finishes, which would kill long OCR/AI jobs on large PDFs.
   req.on('aborted', onClientGone);
-  req.on('close', () => {
+  res.on('close', () => {
     if (!res.writableEnded) onClientGone();
   });
 
@@ -269,10 +260,21 @@ exports.generateProcessReportStream = async (req, res) => {
     try {
       res.write(`event: ${event}\n`);
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      if (typeof res.flush === 'function') res.flush();
     } catch {
       onClientGone();
     }
   };
+
+  const heartbeat = setInterval(() => {
+    if (jobAbort.signal.aborted || res.writableEnded) return;
+    try {
+      res.write(': ping\n\n');
+      if (typeof res.flush === 'function') res.flush();
+    } catch {
+      onClientGone();
+    }
+  }, 15000);
 
   try {
     const mainFiles = req.files?.mainDocument || [];
@@ -305,18 +307,8 @@ exports.generateProcessReportStream = async (req, res) => {
 
     if (jobAbort.signal.aborted) return res.end();
 
-    sendEvent('report', {
-      reportId: record.id,
-      report: {
-        id: record.id,
-        document_type: record.document_type,
-        main_document_name: record.main_document_name,
-        report_title: record.report_title,
-        workflow: 'qaqc',
-        created_at: record.created_at,
-        report_markdown: record.report_markdown,
-      },
-    });
+    // Send id only — full markdown in SSE is easy to drop on large reports.
+    sendEvent('report', { reportId: record.id, report: { id: record.id } });
     sendEvent('done', { ok: true });
     return res.end();
   } catch (error) {
@@ -330,9 +322,12 @@ exports.generateProcessReportStream = async (req, res) => {
       }
       return;
     }
+    console.error('QA/QC stream failed:', error?.message || error);
     sendEvent('error', { message: error?.message || 'Failed to generate QA/QC report.' });
     sendEvent('done', { ok: false });
     return res.end();
+  } finally {
+    clearInterval(heartbeat);
   }
 };
 

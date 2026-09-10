@@ -9,7 +9,7 @@ function getGroqClient() {
     client = new OpenAI({
       apiKey,
       baseURL: 'https://api.groq.com/openai/v1',
-      timeout: 180000,
+      timeout: 300000,
       maxRetries: 1,
     });
   }

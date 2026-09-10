@@ -118,9 +118,12 @@ function shouldSkipMarkdownLine(line, index) {
   const t = String(line || '').trim();
   if (!t) return false;
   if (index < 40) {
-    if (/^#+\s*(PETROLENS|PETROLENZ|DOCCHECK)/i.test(t)) return true;
+    if (/^#+\s*(PETROLENS|PETROLENZ|DOCCHECK)/i.test(t) && !/^#+\s*DOCCHECK QA\/QC Report\s*$/i.test(t)) return true;
     if (/^#+\s*WITH INTEGRATED/i.test(t)) return true;
+    if (/^#+\s*RULE-BASED ENGINEERING/i.test(t)) return true;
     if (/^#+\s*LIBRARY\s*$/i.test(t)) return true;
+    if (/^#+\s*.+QA\/QC Report\s*$/i.test(t) && !/^#+\s*DOCCHECK QA\/QC Report\s*$/i.test(t)) return true;
+    if (/4000-?RULE|4,?000\+?\s*Rules/i.test(t) && index < 10) return true;
     if (/^\*\*Document type:\*\*/i.test(t)) return true;
     if (/^\*\*Main document/i.test(t)) return true;
     if (/^\*\*Support document/i.test(t)) return true;
@@ -335,17 +338,8 @@ function streamProcessReportPdf(res, report) {
   };
 
   drawHeaderBand();
-  writeText(title, { size: 14, bold: true });
-  doc.y += 3;
-  writeText('Engineering document quality assurance — print copy', { size: 8 });
-  doc.y += 6;
-  writeMetaBlock([
-    ['Document type', report.document_type || 'N/A'],
-    ['Main document', report.main_document_name || 'N/A'],
-    ['Support document', report.support_document_name || 'Not provided'],
-    ['Report ID', report.id || 'N/A'],
-    ['Generated', report.created_at ? new Date(report.created_at).toUTCString() : new Date().toUTCString()],
-  ]);
+  writeText(report.report_title || 'DOCCHECK QA/QC Report', { size: 14, bold: true });
+  doc.y += 8;
 
   const lines = compactMarkdownLines(report.report_markdown);
   let i = 0;

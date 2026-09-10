@@ -112,7 +112,55 @@ function StatusPill({ value, kind }) {
 
 export default function ReportMarkdownView({ markdown, variant = 'document' }) {
   const blocks = useMemo(() => {
-    const lines = String(markdown || '').split(/\r?\n/);
+    const cleaned = String(markdown || '')
+      .split(/\r?\n/)
+      .filter((line, index) => {
+        if (index >= 40) return true;
+        const t = line.trim();
+        if (!t) return true;
+        if (/^#+\s*(PETROLENS|PETROLENZ)\b/i.test(t)) return false;
+        if (/^#+\s*DOCCHECK AI QA\/QC REPORT ENGINE\s*$/i.test(t)) return false;
+        if (/^#+\s*RULE-BASED ENGINEERING/i.test(t)) return false;
+        if (/^#+\s*.+Discipline QA\/QC Report\s*$/i.test(t)) return false;
+        if (/^\*\*Document type:\*\*/i.test(t)) return false;
+        if (/^\*\*Main document/i.test(t)) return false;
+        if (/^\*\*Support document/i.test(t)) return false;
+        if (/^\*\*Generated at:\*\*/i.test(t)) return false;
+        if (/^\d+\.\s+.+\.(pdf|docx|png|jpe?g|tif{1,2})\s*$/i.test(t)) return false;
+        if (/^Not provided$/i.test(t)) return false;
+        return true;
+      });
+
+    // Ensure a single canonical title at the top for document reports.
+    const hasTitle = cleaned.some((line) => /^#+\s*DOCCHECK QA\/QC Report\s*$/i.test(line.trim()));
+    let lines =
+      variant === 'document' && !hasTitle
+        ? ['# DOCCHECK QA/QC Report', ...cleaned]
+        : [...cleaned];
+
+    // Drop blank lines / horizontal rules immediately under the title.
+    if (variant === 'document') {
+      const titleIdx = lines.findIndex((line) => /^#+\s*DOCCHECK QA\/QC Report\s*$/i.test(line.trim()));
+      if (titleIdx >= 0) {
+        let end = titleIdx + 1;
+        while (end < lines.length && (!lines[end].trim() || /^\s*---+\s*$/.test(lines[end]))) {
+          end += 1;
+        }
+        lines = [...lines.slice(0, titleIdx + 1), ...lines.slice(end)];
+      }
+    }
+
+    // Collapse runs of blank lines elsewhere to a single blank.
+    const compacted = [];
+    for (const line of lines) {
+      if (!line.trim()) {
+        if (compacted.length && compacted[compacted.length - 1].trim()) compacted.push('');
+        continue;
+      }
+      compacted.push(line);
+    }
+    lines = compacted;
+
     const out = [];
     let i = 0;
     let listBuffer = [];
@@ -143,7 +191,10 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
       }
       if (/^\s*---+\s*$/.test(line)) {
         flushList();
-        out.push({ type: 'hr' });
+        // Skip duplicate / leading HRs (common leftover after stripped report headers).
+        if (out.length && out[out.length - 1].type !== 'hr' && out[out.length - 1].type !== 'h1') {
+          out.push({ type: 'hr' });
+        }
       } else if (/^###\s+/.test(line)) {
         flushList();
         out.push({ type: 'h3', text: line.replace(/^###\s+/, '') });
@@ -160,17 +211,20 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
         out.push({ type: 'p', text: line });
       } else {
         flushList();
-        out.push({ type: 'br' });
+        // Only keep one spacer; never stack blank gaps under headings.
+        if (out.length && out[out.length - 1].type !== 'br' && out[out.length - 1].type !== 'h1') {
+          out.push({ type: 'br' });
+        }
       }
       i += 1;
     }
     flushList();
     return out;
-  }, [markdown]);
+  }, [markdown, variant]);
 
   const shell =
     variant === 'document'
-      ? 'prose-report mx-auto max-w-none space-y-4 rounded-lg border border-border/80 bg-card px-5 py-5 text-sm text-foreground shadow-sm print:rounded-none print:border-black print:bg-white print:text-black print:shadow-none sm:px-6 sm:py-6'
+      ? 'prose-report mx-auto max-w-none space-y-3 rounded-lg border border-border/80 bg-card px-5 py-5 text-sm text-foreground shadow-sm print:rounded-none print:border-black print:bg-white print:text-black print:shadow-none sm:px-6 sm:py-6'
       : 'space-y-2 text-sm';
 
   return (
@@ -178,14 +232,14 @@ export default function ReportMarkdownView({ markdown, variant = 'document' }) {
       {blocks.map((block, index) => {
         if (block.type === 'h1') {
           return (
-            <h1 key={index} className="border-b border-border pb-2 text-xl font-bold tracking-tight text-primary print:border-black print:text-black">
+            <h1 key={index} className="mb-1 border-b border-border pb-2 text-xl font-bold tracking-tight text-primary print:border-black print:text-black">
               {parseInline(block.text)}
             </h1>
           );
         }
         if (block.type === 'h2') {
           return (
-            <h2 key={index} className="mt-2 border-b border-border/70 pb-1.5 text-base font-semibold tracking-tight text-foreground print:border-black print:text-black">
+            <h2 key={index} className="mt-1 border-b border-border/70 pb-1.5 text-base font-semibold tracking-tight text-foreground print:border-black print:text-black">
               {parseInline(block.text)}
             </h2>
           );

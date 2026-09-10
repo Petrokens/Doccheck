@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "watch": "nodemon index.js"
+    "watch": "nodemon index.js",
+    "ocr:install": "python -m pip install -r ocr-service/requirements.txt",
+    "ocr:dev": "python ocr-service/app.py"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.8",

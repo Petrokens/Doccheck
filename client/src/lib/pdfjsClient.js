@@ -8,10 +8,9 @@ const MAX_THUMB_EDGE = 220;
 
 let workerPort = null;
 
-export function previewPageLimit(fileSizeBytes, totalPages) {
-  const mb = Number(fileSizeBytes || 0) / (1024 * 1024);
-  const cap = mb >= 60 ? 12 : mb >= 25 ? 20 : 40;
-  return Math.min(Math.max(1, totalPages || 1), cap);
+/** Preview every page of the uploaded PDF (no 12/20/40 cap). */
+export function previewPageLimit(_fileSizeBytes, totalPages) {
+  return Math.max(1, totalPages || 1);
 }
 
 function absoluteUrl(src) {

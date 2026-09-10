@@ -1,9 +1,25 @@
 const sharp = require('sharp');
 const { createWorker } = require('tesseract.js');
 const { getOpenAIClient, getOpenAIModel } = require('../config/openai');
+const {
+  getOcrEnginePreference,
+  isPaddleOcrAvailable,
+  ocrWithPaddle,
+  paddleBaseUrl,
+} = require('./paddleOcrClient');
 
 const DEFAULT_SCALE = Number(process.env.OCR_RENDER_SCALE || 2.2);
-const OCR_MAX_PAGES = Math.max(1, Number(process.env.OCR_MAX_PAGES || 60) || 60);
+
+/** 0 / empty / "all" = read every page. A positive number caps OCR for operators who want a safety limit. */
+function resolveMaxPages() {
+  const raw = String(process.env.OCR_MAX_PAGES ?? '').trim().toLowerCase();
+  if (!raw || raw === '0' || raw === 'all' || raw === 'unlimited') return Number.POSITIVE_INFINITY;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return Number.POSITIVE_INFINITY;
+  return Math.max(1, Math.floor(n));
+}
+
+const OCR_MAX_PAGES = resolveMaxPages();
 const NATIVE_WEAK_CHARS = Math.max(20, Number(process.env.OCR_WEAK_PAGE_CHARS || 120) || 120);
 const VISION_WEAK_CHARS = Math.max(10, Number(process.env.VISION_WEAK_PAGE_CHARS || 80) || 80);
 const OCR_CONCURRENCY = Math.max(1, Math.min(4, Number(process.env.OCR_CONCURRENCY || 2) || 2));
@@ -72,8 +88,27 @@ async function preprocessForOcr(imageBuffer) {
     .toBuffer();
 }
 
-async function createOcrWorker(onProgress) {
+/**
+ * Resolve raster OCR backend: PaddleOCR (preferred) with Tesseract fallback.
+ * @returns {Promise<{ kind: 'paddle' | 'tesseract' | 'none', worker?: any }>}
+ */
+async function createOcrBackend(onProgress) {
   const emit = typeof onProgress === 'function' ? onProgress : () => {};
+  const pref = getOcrEnginePreference();
+
+  if (pref !== 'tesseract') {
+    const paddleOk = await isPaddleOcrAvailable();
+    if (paddleOk) {
+      emit(`Advanced OCR engine ready (PaddleOCR @ ${paddleBaseUrl()} + Sharp enhance + MuPDF raster).`);
+      return { kind: 'paddle', worker: null };
+    }
+    if (pref === 'paddle') {
+      emit(`PaddleOCR service not reachable at ${paddleBaseUrl()}. Falling back to Tesseract.`);
+    } else {
+      emit(`PaddleOCR unavailable (${paddleBaseUrl()}) — using Tesseract fallback.`);
+    }
+  }
+
   const worker = await createWorker('eng', 1);
   await worker.setParameters({
     tessedit_pageseg_mode: '3',
@@ -81,14 +116,40 @@ async function createOcrWorker(onProgress) {
     user_defined_dpi: '300',
   });
   emit('Advanced OCR engine ready (Tesseract LSTM + Sharp enhance + MuPDF raster).');
-  return worker;
+  return { kind: 'tesseract', worker };
 }
 
-async function ocrImageBuffer(worker, imageBuffer, onProgress, label = 'image') {
+async function ocrImageBuffer(backend, imageBuffer, onProgress, label = 'image') {
   const emit = typeof onProgress === 'function' ? onProgress : () => {};
   const enhanced = await preprocessForOcr(imageBuffer);
-  emit(`OCR recognizing ${label}…`);
-  const { data } = await worker.recognize(enhanced);
+  emit(`OCR recognizing ${label}${backend?.kind === 'paddle' ? ' (PaddleOCR)' : ''}…`);
+
+  if (backend?.kind === 'paddle') {
+    try {
+      return normalizeWhitespace(await ocrWithPaddle(enhanced, { label }));
+    } catch (error) {
+      emit(`PaddleOCR failed on ${label}: ${error?.message || error}. Trying Tesseract…`);
+      const worker = await createWorker('eng', 1);
+      try {
+        await worker.setParameters({
+          tessedit_pageseg_mode: '3',
+          preserve_interword_spaces: '1',
+          user_defined_dpi: '300',
+        });
+        const { data } = await worker.recognize(enhanced);
+        return normalizeWhitespace(data?.text || '');
+      } finally {
+        try {
+          await worker.terminate();
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  if (!backend?.worker) return '';
+  const { data } = await backend.worker.recognize(enhanced);
   return normalizeWhitespace(data?.text || '');
 }
 
@@ -111,7 +172,7 @@ async function analyzeImageWithVision(imageBuffer, { pageLabel = 'page', mime = 
     prepared = imageBuffer;
   }
   const b64 = Buffer.from(prepared).toString('base64');
-  emit(`Vision image analysis on ${pageLabel} (${model})…`);
+  emit(`Vision image analysis on ${pageLabel}…`);
 
   try {
     const response = await client.chat.completions.create({
@@ -229,16 +290,18 @@ async function extractPdfAdvanced(buffer, onProgress) {
   const mupdf = await loadMuPdf();
   const pdf = mupdf.Document.openDocument(buffer, 'application/pdf');
   const totalPages = pdf.countPages() || 0;
-  const limit = Math.min(totalPages, OCR_MAX_PAGES);
+  const limit = Number.isFinite(OCR_MAX_PAGES) ? Math.min(totalPages, OCR_MAX_PAGES) : totalPages;
   emit(`Advanced PDF pipeline: ${totalPages} page(s), processing ${limit}, mode=${mode}.`);
 
-  if (totalPages > OCR_MAX_PAGES) {
-    emit(`Note: OCR_MAX_PAGES=${OCR_MAX_PAGES}; remaining pages skipped for runtime safety.`);
+  if (Number.isFinite(OCR_MAX_PAGES) && totalPages > OCR_MAX_PAGES) {
+    emit(`Note: OCR_MAX_PAGES=${OCR_MAX_PAGES}; remaining pages skipped.`);
+  } else if (totalPages) {
+    emit(`Reading every page (${totalPages}) — no pages skipped.`);
   }
 
-  let worker = null;
+  let backend = { kind: 'none', worker: null };
   if (mode !== 'native') {
-    worker = await createOcrWorker(emit);
+    backend = await createOcrBackend(emit);
   }
   const ocrQueue = createAsyncQueue();
 
@@ -258,9 +321,9 @@ async function extractPdfAdvanced(buffer, onProgress) {
         png = renderMuPagePng(mupdf, page);
       }
 
-      if (shouldOcr && png && worker) {
+      if (shouldOcr && png && backend.kind !== 'none') {
         emit(`Raster OCR page ${pageNum}/${limit}${weakNative ? ' (low embedded text)' : ''}…`);
-        ocrText = await ocrQueue(() => ocrImageBuffer(worker, png, emit, `page ${pageNum}/${limit}`));
+        ocrText = await ocrQueue(() => ocrImageBuffer(backend, png, emit, `page ${pageNum}/${limit}`));
         emit(
           ocrText
             ? `OCR page ${pageNum}/${limit}: ${previewText(ocrText, 320)}`
@@ -287,9 +350,9 @@ async function extractPdfAdvanced(buffer, onProgress) {
     emit(`PDF advanced extraction complete (${limit}/${totalPages} pages, ${joined.length} chars).`);
     return joined;
   } finally {
-    if (worker) {
+    if (backend?.worker) {
       try {
-        await worker.terminate();
+        await backend.worker.terminate();
       } catch {
         // ignore
       }
@@ -300,16 +363,14 @@ async function extractPdfAdvanced(buffer, onProgress) {
 async function extractImageAdvanced(buffer, fileName, onProgress) {
   const emit = typeof onProgress === 'function' ? onProgress : () => {};
   emit(`Advanced image OCR: ${fileName}`);
-  const worker = await createOcrWorker(emit);
+  const backend = await createOcrBackend(emit);
   try {
-    const ocrText = await ocrImageBuffer(worker, buffer, emit, 'page 1/1');
+    const ocrText = await ocrImageBuffer(backend, buffer, emit, 'page 1/1');
     emit(ocrText ? `OCR page 1/1: ${previewText(ocrText)}` : 'OCR page 1/1: (no OCR text)');
 
     let visionText = '';
     const forceVision = envFlag('ENABLE_VISION_ANALYSIS', true);
     if (visionEnabled() && (ocrText.length < VISION_WEAK_CHARS || forceVision)) {
-      // For engineering images/drawings always prefer vision when OCR is weak;
-      // when OCR is strong, still run vision if text is sparse.
       const shouldVision = ocrText.length < Math.max(VISION_WEAK_CHARS * 3, 240);
       if (shouldVision) {
         const mime = /\.jpe?g$/i.test(fileName)
@@ -324,10 +385,12 @@ async function extractImageAdvanced(buffer, fileName, onProgress) {
 
     return mergePageLayers({ pageNum: 1, nativeText: '', ocrText, visionText });
   } finally {
-    try {
-      await worker.terminate();
-    } catch {
-      // ignore
+    if (backend?.worker) {
+      try {
+        await backend.worker.terminate();
+      } catch {
+        // ignore
+      }
     }
   }
 }

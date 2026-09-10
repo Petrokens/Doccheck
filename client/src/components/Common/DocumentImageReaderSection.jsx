@@ -3,21 +3,109 @@ import ReportMarkdownView from '@/components/Common/ReportMarkdownView';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { openPdfFromFile, previewPageLimit, renderPdfPageSafe } from '@/lib/pdfjsClient';
+import {
+  MAX_PREVIEW_EDGE,
+  MAX_THUMB_EDGE,
+  openPdfFromFile,
+  previewPageLimit,
+  renderPdfPageSafe,
+} from '@/lib/pdfjsClient';
+import { PADDLEOCR_URL } from '@/config';
 import { Brain, CheckCircle2, Eye, FileSearch, Loader2, RefreshCw, RotateCcw, ScanLine, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-const PAGE_DWELL_MS = 1600;
 const IMAGE_RE = /\.(png|jpe?g|webp|tif|tiff)$/i;
 const PDF_RE = /\.pdf$/i;
 
 function detectAiPhase(logs = []) {
   const joined = logs.join('\n').toLowerCase();
-  if (/report generated|tokens used|report engine provider/.test(joined)) return 'complete';
-  if (/ai engine|preparing ai|rule engine|llm|reviewing document/.test(joined)) return 'ai';
+  if (/report generated|qaqc report ready|report engine response received/.test(joined)) return 'complete';
+  if (/doccheck ai|preparing ai|rule engine|llm|reviewing document|report engine/.test(joined)) return 'ai';
   if (/extract|ocr|parsing|raster|vision page|page\s+\d+/i.test(joined)) return 'ocr';
   return 'idle';
+}
+
+/**
+ * Real server OCR progress from SSE logs (not a client-side fake timer).
+ * Handles concurrent page processing by tracking unique page numbers.
+ */
+function serverOcrProgress(logs = [], fallbackTotal = 0) {
+  const seen = new Set();
+  let latestPage = 0;
+  let highest = 0;
+  let reportedTotal = fallbackTotal;
+  let processedLimit = 0;
+  let extractionComplete = false;
+
+  for (const raw of logs) {
+    const line = String(raw || '');
+
+    const pipeline = line.match(/Advanced PDF pipeline:\s*(\d+)\s*page\(s\),\s*processing\s*(\d+)/i);
+    if (pipeline) {
+      reportedTotal = Number(pipeline[1]) || reportedTotal;
+      processedLimit = Number(pipeline[2]) || processedLimit;
+    }
+
+    const skipped = line.match(/OCR_MAX_PAGES\s*=\s*(\d+)/i);
+    if (skipped) processedLimit = Number(skipped[1]) || processedLimit;
+
+    const done = line.match(/PDF advanced extraction complete\s*\((\d+)\s*\/\s*(\d+)\s*pages/i);
+    if (done) {
+      extractionComplete = true;
+      const processed = Number(done[1]) || 0;
+      const total = Number(done[2]) || 0;
+      processedLimit = processed || processedLimit;
+      reportedTotal = total || reportedTotal;
+      highest = Math.max(highest, processed);
+      latestPage = processed || latestPage;
+      for (let i = 1; i <= processed; i += 1) seen.add(i);
+    }
+
+    const nativeDone = line.match(/PDF page scan complete\s*\((\d+)\s*page/i);
+    if (nativeDone) {
+      extractionComplete = true;
+      const n = Number(nativeDone[1]) || 0;
+      highest = Math.max(highest, n);
+      latestPage = n || latestPage;
+      reportedTotal = n || reportedTotal;
+      processedLimit = n || processedLimit;
+      for (let i = 1; i <= n; i += 1) seen.add(i);
+    }
+
+    const pageMatch = line.match(
+      /(?:OCR|Vision|Raster OCR)\s+page\s+(\d+)\s*\/\s*(\d+)/i,
+    );
+    if (pageMatch) {
+      const pageNum = Number(pageMatch[1]) || 0;
+      const total = Number(pageMatch[2]) || 0;
+      if (pageNum) {
+        seen.add(pageNum);
+        highest = Math.max(highest, pageNum);
+        latestPage = pageNum;
+      }
+      if (total) {
+        processedLimit = processedLimit || total;
+        if (!reportedTotal || total > reportedTotal) reportedTotal = Math.max(reportedTotal, total);
+      }
+    }
+  }
+
+  const target = processedLimit || reportedTotal || fallbackTotal;
+  if (extractionComplete && target && seen.size >= target) {
+    highest = Math.max(highest, target);
+    latestPage = latestPage || target;
+  }
+
+  return {
+    latestPage,
+    highest,
+    processedCount: seen.size,
+    documentPages: reportedTotal || fallbackTotal,
+    ocrTarget: target,
+    extractionComplete,
+    donePages: seen,
+  };
 }
 
 /** Collect OCR / vision snippets from server logs, keyed by page number. */
@@ -125,8 +213,12 @@ function PageThumb({ page, active, done, scanning, onClick }) {
       )}
     >
       <div className="relative h-24 w-[4.5rem] bg-muted">
-        {page.previewUrl ? (
-          <img src={page.previewUrl} alt={`Page ${page.pageNum}`} className="h-full w-full object-cover object-top" />
+        {page.thumbUrl || page.previewUrl ? (
+          <img
+            src={page.thumbUrl || page.previewUrl}
+            alt={`Page ${page.pageNum}`}
+            className="h-full w-full object-cover object-top"
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">P{page.pageNum}</div>
         )}
@@ -161,6 +253,8 @@ export default function DocumentImageReaderSection({
   const [zoom, setZoom] = useState(1);
   const abortRef = useRef(0);
   const objectUrlRef = useRef('');
+  const pdfSessionRef = useRef(null);
+  const pagesRef = useRef([]);
   const scanCursorRef = useRef(0);
   const thumbStripRef = useRef(null);
 
@@ -170,8 +264,19 @@ export default function DocumentImageReaderSection({
     return detectAiPhase(logs);
   }, [isGenerating, logs]);
 
+  const ocrProgress = useMemo(() => serverOcrProgress(logs, totalPages), [logs, totalPages]);
+  const ocrTarget = ocrProgress.ocrTarget || totalPages || pages.length;
+  const scannedCount = Math.min(
+    scannedThrough,
+    ocrTarget || scannedThrough || 0,
+  );
+  const allOcrDone =
+    ocrProgress.extractionComplete ||
+    (ocrTarget > 0 && ocrProgress.processedCount >= ocrTarget);
+
   const logOcrMap = useMemo(() => ocrMarkdownByPage(logs), [logs]);
   const active = pages.find((p) => p.pageNum === activePage) || pages[0] || null;
+  pagesRef.current = pages;
 
   const activeMarkdown = useMemo(() => {
     const entry = logOcrMap.get(activePage);
@@ -179,17 +284,15 @@ export default function DocumentImageReaderSection({
   }, [activePage, active?.text, logOcrMap]);
 
   const progressPct = useMemo(() => {
-    if (!totalPages) {
-      if (phase === 'complete') return 100;
-      if (isGenerating && phase === 'ai') return 90;
-      if (isGenerating) return Math.max(8, Math.round((scannedThrough / Math.max(pages.length, 1)) * 70));
-      return 0;
-    }
-    const scanShare = Math.min(scannedThrough, totalPages) / totalPages;
-    if (phase === 'complete') return 100;
-    if (phase === 'ai') return Math.min(99, Math.round(70 + scanShare * 25));
-    return Math.min(95, Math.round(scanShare * 70));
-  }, [totalPages, scannedThrough, pages.length, phase, isGenerating]);
+    const target = ocrTarget || totalPages || pages.length || 1;
+    const share = Math.min(scannedCount, target) / target;
+    if (phase === 'complete' && allOcrDone) return 100;
+    if (phase === 'complete') return Math.min(99, Math.round(70 + share * 25));
+    if (phase === 'ai' && allOcrDone) return Math.min(99, Math.round(85 + share * 10));
+    if (phase === 'ai') return Math.min(90, Math.round(70 + share * 20));
+    if (isGenerating) return Math.min(70, Math.max(5, Math.round(share * 70)));
+    return scannedCount ? Math.min(70, Math.round(share * 70)) : 0;
+  }, [ocrTarget, totalPages, pages.length, scannedCount, phase, allOcrDone, isGenerating]);
 
   useEffect(() => {
     if (!mainDocument) {
@@ -201,6 +304,7 @@ export default function DocumentImageReaderSection({
       setActivePage(1);
       setUserLocked(false);
       scanCursorRef.current = 0;
+      pdfSessionRef.current = null;
       return undefined;
     }
 
@@ -213,6 +317,7 @@ export default function DocumentImageReaderSection({
     setPages([]);
     setLoadProgress({ current: 0, total: 0 });
     setZoom(1);
+    pdfSessionRef.current = null;
 
     const name = mainDocument.name || '';
     if (IMAGE_RE.test(name)) {
@@ -220,7 +325,7 @@ export default function DocumentImageReaderSection({
       const url = URL.createObjectURL(mainDocument);
       setImagePreview(url);
       setTotalPages(1);
-      setPages([{ pageNum: 1, previewUrl: url, text: '', charCount: 0 }]);
+      setPages([{ pageNum: 1, previewUrl: url, thumbUrl: url, text: '', charCount: 0 }]);
       return () => URL.revokeObjectURL(url);
     }
 
@@ -241,12 +346,17 @@ export default function DocumentImageReaderSection({
     (async () => {
       try {
         const opened = await openPdfFromFile(mainDocument);
+        if (seq !== abortRef.current) {
+          if (opened.objectUrl) URL.revokeObjectURL(opened.objectUrl);
+          return;
+        }
         objectUrlRef.current = opened.objectUrl;
+        pdfSessionRef.current = opened;
         const { pdf, pdfjsLib } = opened;
-        if (seq !== abortRef.current) return;
         const total = pdf.numPages || 0;
         const limit = previewPageLimit(mainDocument.size, total);
         setTotalPages(total);
+        setLoadProgress({ current: 0, total: limit });
 
         const built = [];
         for (let pageNum = 1; pageNum <= limit; pageNum += 1) {
@@ -259,7 +369,7 @@ export default function DocumentImageReaderSection({
           } catch {
             text = '';
           }
-          const previewUrl = await renderPdfPageSafe(page, pdfjsLib, pageNum);
+          const thumbUrl = await renderPdfPageSafe(page, pdfjsLib, pageNum, { maxEdge: MAX_THUMB_EDGE });
           try {
             page.cleanup?.();
           } catch {
@@ -267,7 +377,8 @@ export default function DocumentImageReaderSection({
           }
           built.push({
             pageNum,
-            previewUrl,
+            thumbUrl,
+            previewUrl: '',
             text,
             charCount: text.length,
           });
@@ -290,6 +401,7 @@ export default function DocumentImageReaderSection({
 
     return () => {
       abortRef.current += 1;
+      pdfSessionRef.current = null;
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
         objectUrlRef.current = '';
@@ -297,35 +409,74 @@ export default function DocumentImageReaderSection({
     };
   }, [mainDocument, reloadNonce]);
 
-  // Strict one-by-one page scan: 1 → 2 → 3 … (never jump ahead)
+  // Upgrade the active page from thumbnail to a readable full preview.
   useEffect(() => {
-    if (!pages.length) return undefined;
-
-    if (!isGenerating) {
-      if (phase === 'complete') {
-        scanCursorRef.current = pages.length;
-        setScannedThrough(pages.length);
+    if (!mainDocument || !PDF_RE.test(mainDocument.name || '') || !activePage) return undefined;
+    let cancelled = false;
+    (async () => {
+      let session = pdfSessionRef.current;
+      for (let i = 0; !session?.pdf && i < 400 && !cancelled; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        session = pdfSessionRef.current;
       }
-      return undefined;
+      if (cancelled || !session?.pdf) return;
+
+      let current = pagesRef.current.find((p) => p.pageNum === activePage);
+      for (let i = 0; !current && i < 800 && !cancelled; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        current = pagesRef.current.find((p) => p.pageNum === activePage);
+      }
+      if (cancelled || !current || current.previewUrl) return;
+      try {
+        const page = await session.pdf.getPage(activePage);
+        const url = await renderPdfPageSafe(page, session.pdfjsLib, activePage, { maxEdge: MAX_PREVIEW_EDGE });
+        try {
+          page.cleanup?.();
+        } catch {
+          // ignore
+        }
+        if (cancelled) return;
+        setPages((prev) => prev.map((p) => (p.pageNum === activePage ? { ...p, previewUrl: url } : p)));
+      } catch {
+        // keep thumbnail
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activePage, mainDocument, reloadNonce]);
+
+  // Drive scan cursor from real server OCR logs (never fake-complete ahead of the server).
+  useEffect(() => {
+    let nextScanned = 0;
+    if (ocrProgress.extractionComplete) {
+      nextScanned = ocrProgress.ocrTarget || ocrProgress.processedCount || ocrProgress.highest;
+    } else if (ocrProgress.processedCount > 0) {
+      // Concurrent OCR: count completed pages, do not jump ahead by highest page number.
+      nextScanned = ocrProgress.processedCount;
     }
 
-    // Begin at page 1
-    if (scanCursorRef.current < 1) {
-      scanCursorRef.current = 1;
-      setScannedThrough(1);
-      if (!userLocked) setActivePage(1);
+    scanCursorRef.current = nextScanned;
+    setScannedThrough((prev) => (prev === nextScanned ? prev : nextScanned));
+
+    if (isGenerating && !userLocked) {
+      const followPage =
+        ocrProgress.latestPage ||
+        (ocrProgress.extractionComplete ? nextScanned : 0) ||
+        (nextScanned > 0 ? nextScanned : 1);
+      if (followPage) {
+        setActivePage((prev) => (prev === followPage ? prev : followPage));
+      }
     }
-
-    const timer = setInterval(() => {
-      if (scanCursorRef.current >= pages.length) return;
-      scanCursorRef.current += 1;
-      const next = scanCursorRef.current;
-      setScannedThrough(next);
-      if (!userLocked) setActivePage(next);
-    }, PAGE_DWELL_MS);
-
-    return () => clearInterval(timer);
-  }, [isGenerating, pages.length, phase, userLocked]);
+  }, [
+    isGenerating,
+    userLocked,
+    ocrProgress.extractionComplete,
+    ocrProgress.highest,
+    ocrProgress.latestPage,
+    ocrProgress.ocrTarget,
+    ocrProgress.processedCount,
+  ]);
 
   // Keep active thumbnail in view
   useEffect(() => {
@@ -348,11 +499,35 @@ export default function DocumentImageReaderSection({
   if (!mainDocument) return null;
 
   const aiLines = logs
-    .filter((line) => /ai|rule engine|llm|token|provider|reviewing|preparing ai/i.test(line))
+    .filter((line) => /ai|rule engine|doccheck|reviewing|preparing|report engine|qaqc report/i.test(line))
     .slice(-8);
 
-  const scanningNow = isGenerating && scannedThrough < pages.length;
+  const scanningNow = isGenerating && !allOcrDone;
   const showBeam = isGenerating && (scanningNow || phase === 'ocr' || phase === 'ai');
+  const statusLabel = (() => {
+    if (isGenerating) {
+      if (scanningNow) {
+        return `Scanning page ${ocrProgress.latestPage || activePage || 1} of ${ocrTarget || totalPages || '…'} (${scannedCount} done)`;
+      }
+      if (phase === 'ai') {
+        return `Page scan complete (${scannedCount}/${ocrTarget || totalPages || scannedCount}) — AI deep review in progress`;
+      }
+      return 'Finalizing OCR markdown…';
+    }
+    if (phase === 'complete') {
+      if (ocrTarget && scannedCount < ocrTarget) {
+        return `Scan finished early — ${scannedCount} of ${ocrTarget} pages processed`;
+      }
+      if (totalPages && ocrTarget && ocrTarget < totalPages) {
+        return `Document scan finished (${scannedCount} of ${totalPages} pages OCR'd)`;
+      }
+      return `Document scan finished (${scannedCount || totalPages || 0} pages)`;
+    }
+    if (isLoadingPages) {
+      return `Preparing page previews (${loadProgress.current}/${loadProgress.total || '…'})`;
+    }
+    return 'Waiting to start analysis';
+  })();
 
   return (
     <Card className="overflow-hidden border-primary/20">
@@ -365,8 +540,8 @@ export default function DocumentImageReaderSection({
           <CardDescription className="mt-1">
             {mainDocument.name}
             {supportDocument ? ` · support: ${supportDocument.name}` : ''}
-            {totalPages ? ` · ${totalPages} page${totalPages === 1 ? '' : 's'}` : ''}
-            {pages.length && totalPages > pages.length ? ` (previewing first ${pages.length})` : ''}
+            {totalPages ? ` · ${totalPages} page${totalPages === 1 ? '' : 's'} (all pages)` : ''}
+            {` · PaddleOCR ${PADDLEOCR_URL}`}
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -385,26 +560,26 @@ export default function DocumentImageReaderSection({
             </TooltipTrigger>
             <TooltipContent>Refresh preview</TooltipContent>
           </Tooltip>
-          <PhaseBadge phase={isGenerating ? phase : phase === 'complete' ? 'complete' : 'idle'} />
+          <PhaseBadge
+            phase={
+              isGenerating
+                ? allOcrDone && phase === 'ai'
+                  ? 'ai'
+                  : scanningNow
+                    ? 'ocr'
+                    : phase
+                : phase === 'complete'
+                  ? 'complete'
+                  : 'idle'
+            }
+          />
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4 pt-4">
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {isGenerating
-                ? scanningNow
-                  ? `Scanning page ${activePage} of ${pages.length || totalPages || '…'} (one by one)`
-                  : phase === 'ai'
-                    ? 'Page scan complete — AI deep review in progress'
-                    : 'Finalizing OCR markdown…'
-                : phase === 'complete'
-                  ? 'Document scan finished'
-                  : isLoadingPages
-                    ? `Preparing page previews (${loadProgress.current}/${loadProgress.total || '…'})`
-                    : 'Waiting to start analysis'}
-            </span>
+            <span>{statusLabel}</span>
             <span className="font-mono">{progressPct}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -500,10 +675,10 @@ export default function DocumentImageReaderSection({
                       <RefreshCw /> Retry preview
                     </Button>
                   </div>
-                ) : active?.previewUrl || imagePreview ? (
+                ) : active?.previewUrl || active?.thumbUrl || imagePreview ? (
                   <>
                     <img
-                      src={active?.previewUrl || imagePreview}
+                      src={active?.previewUrl || active?.thumbUrl || imagePreview}
                       alt={`Scanning page ${activePage}`}
                       className="max-h-[360px] w-auto max-w-full rounded-md object-contain shadow-lg shadow-black/40"
                       style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
@@ -534,7 +709,10 @@ export default function DocumentImageReaderSection({
                     <PageThumb
                       page={page}
                       active={page.pageNum === activePage}
-                      done={page.pageNum <= scannedThrough}
+                      done={
+                        ocrProgress.donePages.has(page.pageNum) ||
+                        (allOcrDone && page.pageNum <= scannedCount)
+                      }
                       scanning={isGenerating && page.pageNum === activePage && scanningNow}
                       onClick={() => {
                         setUserLocked(true);
@@ -612,10 +790,16 @@ export default function DocumentImageReaderSection({
             <div className="grid grid-cols-3 gap-2 text-center">
               {[
                 { label: 'Pages', value: totalPages || (IMAGE_RE.test(mainDocument.name || '') ? 1 : '—') },
-                { label: 'Scanned', value: Math.min(scannedThrough, pages.length || scannedThrough) || 0 },
+                { label: 'Scanned', value: scannedCount || 0 },
                 {
                   label: 'Stage',
-                  value: scanningNow ? `P${activePage}` : phase === 'ai' ? 'AI' : phase === 'complete' ? 'Done' : 'Idle',
+                  value: scanningNow
+                    ? `P${ocrProgress.latestPage || activePage}`
+                    : phase === 'ai'
+                      ? 'AI'
+                      : phase === 'complete'
+                        ? 'Done'
+                        : 'Idle',
                 },
               ].map((item) => (
                 <div key={item.label} className="rounded-lg border bg-muted/40 px-2 py-2">

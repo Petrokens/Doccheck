@@ -86,7 +86,12 @@ export async function generateProcessReportStream(params, { onLog, onReport, onE
     } catch {
       return;
     }
-    if (eventType === 'log') onLog?.(payload.line || '');
+    if (eventType === 'log') {
+      const line = payload.line || '';
+      onLog?.(line);
+      const persisted = String(line).match(/Report ID:\s*([a-zA-Z0-9_-]{8,32})/i);
+      if (persisted) pendingReportId = persisted[1];
+    }
     if (eventType === 'error') {
       streamError = payload.message || 'Failed to generate report.';
       onError?.(streamError);
@@ -99,6 +104,9 @@ export async function generateProcessReportStream(params, { onLog, onReport, onE
       } else if (payload.reportId || inline?.id) {
         pendingReportId = payload.reportId || inline.id;
       }
+    }
+    if (eventType === 'done' && payload.reportId) {
+      pendingReportId = pendingReportId || payload.reportId;
     }
   };
 
@@ -118,6 +126,9 @@ export async function generateProcessReportStream(params, { onLog, onReport, onE
   if (!receivedReport && pendingReportId) {
     receivedReport = await fetchProcessReport(pendingReportId);
     onReport?.(receivedReport);
+  }
+  if (!receivedReport) {
+    throw new Error('Report generation completed without report data.');
   }
   return receivedReport;
 }

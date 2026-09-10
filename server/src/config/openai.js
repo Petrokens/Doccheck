@@ -6,7 +6,7 @@ function getOpenAIClient() {
   const apiKey = String(process.env.OPENAI_API_KEY || '').trim();
   if (!apiKey) return null;
   if (!client) {
-    client = new OpenAI({ apiKey, timeout: 180000, maxRetries: 1 });
+    client = new OpenAI({ apiKey, timeout: 300000, maxRetries: 1 });
   }
   return client;
 }
