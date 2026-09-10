@@ -4,14 +4,14 @@ const LOCAL_API_URL = 'http://127.0.0.1:5000/api';
 function resolveApiBaseUrl() {
   const fromEnv = String(import.meta.env.VITE_API_BASE_URL || '').trim();
   if (fromEnv) return fromEnv;
-  // Desktop talks to the API on this PC. Hosted Render is currently offline.
-  if (typeof window !== 'undefined' && window.doccheckDesktop?.isDesktop) {
-    return LOCAL_API_URL;
-  }
-  return import.meta.env.DEV ? 'http://localhost:5000/api' : PRODUCTION_API_URL;
+  const desktopApi = typeof window !== 'undefined'
+    ? String(window.doccheckDesktop?.apiBaseUrl || '').trim()
+    : '';
+  if (desktopApi) return desktopApi;
+  return import.meta.env.DEV ? LOCAL_API_URL : PRODUCTION_API_URL;
 }
 
-/** Prefer VITE_API_BASE_URL. Desktop → local API; browser DEV → local; PROD web → hosted. */
+/** Prefer VITE_API_BASE_URL. Packaged desktop uses hosted API (or local if it is already up). */
 export const API_BASE_URL = resolveApiBaseUrl();
 
 /** Local PaddleOCR microservice (server/ocr-service). Override with VITE_PADDLEOCR_URL. */

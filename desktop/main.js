@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 
 const APP_ICON = path.join(__dirname, 'assets', 'icon.png');
@@ -46,10 +47,16 @@ const CANDIDATE_URLS = [
   'http://127.0.0.1:5173',
 ].filter(Boolean);
 
+const LOCAL_API_HEALTH = 'http://127.0.0.1:5000/api/health';
+const LOCAL_API_BASE = 'http://127.0.0.1:5000/api';
+const HOSTED_API_BASE = 'https://petrolenz.onrender.com/api';
+
 let mainWindow = null;
 let splashWindow = null;
 let splashDone = false;
 let rendererServer = null;
+let apiChild = null;
+let apiBaseUrl = HOSTED_API_BASE;
 let startUrl = CANDIDATE_URLS[0] || 'http://localhost:5174';
 
 function probeUrl(url, timeoutMs = 800) {
@@ -74,6 +81,66 @@ function probeUrl(url, timeoutMs = 800) {
       done(false);
     }
   });
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function findServerDir() {
+  const candidates = [
+    path.join(__dirname, '..', 'server'),
+    path.join(process.cwd(), '..', 'server'),
+    path.join(process.cwd(), 'server'),
+  ];
+  return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.js'))) || null;
+}
+
+async function resolveProductApiBaseUrl() {
+  if (await probeUrl(LOCAL_API_HEALTH, 1200)) {
+    console.log('Using local API', LOCAL_API_BASE);
+    return LOCAL_API_BASE;
+  }
+  console.log('Using hosted API', HOSTED_API_BASE);
+  return HOSTED_API_BASE;
+}
+
+async function ensureLocalApi() {
+  if (app.isPackaged) return false;
+  if (await probeUrl(LOCAL_API_HEALTH, 1200)) {
+    console.log('Local API already running at', LOCAL_API_HEALTH);
+    return true;
+  }
+
+  const serverDir = findServerDir();
+  if (!serverDir) {
+    console.warn('Local API is down and server/ was not found next to the desktop app.');
+    return false;
+  }
+
+  const nodeBin = process.env.npm_node_execpath || 'node';
+  console.log('Starting local API from', serverDir);
+  apiChild = spawn(nodeBin, ['index.js'], {
+    cwd: serverDir,
+    env: { ...process.env },
+    stdio: 'ignore',
+    windowsHide: true,
+    detached: true,
+  });
+  apiChild.on('error', (err) => {
+    console.error('Failed to start local API:', err.message);
+  });
+  apiChild.unref();
+
+  for (let i = 0; i < 40; i += 1) {
+    await sleep(400);
+    if (await probeUrl(LOCAL_API_HEALTH, 800)) {
+      console.log('Local API is ready');
+      return true;
+    }
+  }
+  console.warn('Local API did not become ready on http://127.0.0.1:5000');
+  return false;
 }
 
 function rendererRoot() {
@@ -179,6 +246,7 @@ function createMainWindow() {
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: [`--doccheck-api=${apiBaseUrl}`],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -212,6 +280,7 @@ function createMainWindow() {
 }
 
 async function loadMainApp() {
+  apiBaseUrl = await resolveProductApiBaseUrl();
   createMainWindow();
   const resolved = await resolveStartUrl();
   if (!resolved) {
@@ -295,6 +364,7 @@ app.whenReady().then(async () => {
   ipcMain.on('splash-finished', () => finishSplash());
   ipcMain.handle('app-version', () => app.getVersion());
 
+  if (!app.isPackaged) await ensureLocalApi();
   await loadMainApp();
   const splash = createSplashWindow();
   if (!splash) showMainWindow();
