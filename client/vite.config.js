@@ -40,6 +40,7 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
   },
+
   worker: {
     format: 'es',
   },

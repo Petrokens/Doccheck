@@ -112,9 +112,9 @@ function buildOpenApiSpec({ serverUrl } = {}) {
       '/api/auth/login': {
         post: {
           tags: ['Auth'],
-          summary: 'Login',
+          summary: 'Login (password step)',
           description:
-            'Validates email and password and issues a session. Returns an access JWT and sets a rotated httpOnly refresh cookie. Five failed password attempts lock the account for 15 minutes (`423`). Rate limit: 8 / 15 min / IP.',
+            'Validates email and password, then emails a 6-digit OTP via SMTP. Returns `requiresOtp` + `challengeId` (no access token yet). Five failed password attempts lock the account for 15 minutes (`423`). Rate limit: 8 / 15 min / IP.',
           operationId: 'login',
           security: [],
           parameters: trustedOriginParams,
@@ -127,22 +127,105 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           },
           responses: {
             200: {
-              description: 'Login successful. Copy `accessToken` into Authorize.',
-              headers: {
-                'Set-Cookie': {
-                  schema: { type: 'string' },
-                  description: 'httpOnly `refreshToken` cookie, path `/api/auth`',
-                },
-              },
+              description: 'OTP sent. Complete login with POST /api/auth/verify-otp.',
               ...jsonContent(
-                { $ref: '#/components/schemas/LoginResponse' },
-                { message: 'Login successful', accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+                {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string' },
+                    requiresOtp: { type: 'boolean' },
+                    challengeId: { type: 'string', format: 'uuid' },
+                    expiresAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+                {
+                  message: 'Verification code sent to your email.',
+                  requiresOtp: true,
+                  challengeId: '00000000-0000-4000-8000-000000000000',
+                },
               ),
             },
             400: errorResponse('Missing credentials', 'Email and password are required.'),
             401: errorResponse('Invalid credentials', 'Invalid email or password.'),
             423: errorResponse('Account locked', 'Account temporarily locked. Try again later.'),
             429: errorResponse('Rate limited', 'Too many login attempts. Try again after 15 minutes.'),
+            502: errorResponse('SMTP send failed', 'Could not send verification email. Check SMTP settings and try again.'),
+            503: errorResponse('SMTP not configured', 'Login email is not configured.'),
+          },
+        },
+      },
+
+      '/api/auth/verify-otp': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Verify login OTP',
+          description: 'Consumes the email OTP challenge and issues access + refresh tokens.',
+          operationId: 'verifyLoginOtp',
+          security: [],
+          parameters: trustedOriginParams,
+          requestBody: {
+            required: true,
+            ...jsonContent(
+              {
+                type: 'object',
+                required: ['challengeId', 'otp'],
+                properties: {
+                  challengeId: { type: 'string', format: 'uuid' },
+                  otp: { type: 'string', pattern: '^\\d{6}$' },
+                },
+              },
+              { challengeId: '00000000-0000-4000-8000-000000000000', otp: '123456' },
+            ),
+          },
+          responses: {
+            200: {
+              description: 'Login successful',
+              ...jsonContent(
+                { $ref: '#/components/schemas/LoginResponse' },
+                { message: 'Login successful', accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+              ),
+            },
+            400: errorResponse('Validation failed', 'challengeId and a 6-digit otp are required.'),
+            401: errorResponse('Invalid OTP', 'Invalid or expired verification code.'),
+          },
+        },
+      },
+
+      '/api/auth/resend-otp': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Resend login OTP',
+          operationId: 'resendLoginOtp',
+          security: [],
+          parameters: trustedOriginParams,
+          requestBody: {
+            required: true,
+            ...jsonContent(
+              {
+                type: 'object',
+                required: ['challengeId'],
+                properties: { challengeId: { type: 'string', format: 'uuid' } },
+              },
+              { challengeId: '00000000-0000-4000-8000-000000000000' },
+            ),
+          },
+          responses: {
+            200: {
+              description: 'New OTP emailed',
+              ...jsonContent(
+                {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string' },
+                    requiresOtp: { type: 'boolean' },
+                    challengeId: { type: 'string', format: 'uuid' },
+                    expiresAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+                { message: 'A new verification code was sent to your email.', requiresOtp: true },
+              ),
+            },
+            401: errorResponse('Challenge invalid', 'Sign in again to request a new code.'),
           },
         },
       },

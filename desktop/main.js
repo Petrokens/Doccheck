@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const https = require('https');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 
@@ -49,7 +50,7 @@ const CANDIDATE_URLS = [
 
 const LOCAL_API_HEALTH = 'http://127.0.0.1:5000/api/health';
 const LOCAL_API_BASE = 'http://127.0.0.1:5000/api';
-const HOSTED_API_BASE = 'https://petrolenz.onrender.com/api';
+const HOSTED_API_BASE = 'https://doccheck-3qw4.onrender.com/api';
 
 let mainWindow = null;
 let splashWindow = null;
@@ -68,9 +69,10 @@ function probeUrl(url, timeoutMs = 800) {
       resolve(ok);
     };
     try {
-      const req = http.get(url, { timeout: timeoutMs }, (res) => {
+      const lib = String(url).startsWith('https:') ? https : http;
+      const req = lib.get(url, { timeout: timeoutMs }, (res) => {
         res.resume();
-        done(true);
+        done(Boolean(res.statusCode && res.statusCode < 500));
       });
       req.on('timeout', () => {
         req.destroy();
@@ -96,17 +98,49 @@ function findServerDir() {
   return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.js'))) || null;
 }
 
+function envFlag(name) {
+  const v = String(process.env[name] || '').trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
 async function resolveProductApiBaseUrl() {
-  if (await probeUrl(LOCAL_API_HEALTH, 1200)) {
+  const override = String(process.env.ELECTRON_API_URL || '').trim();
+  if (override) {
+    console.log('Using ELECTRON_API_URL', override);
+    return override.replace(/\/$/, '');
+  }
+
+  // Packaged EXE: prefer live Render. Fall back to local only if hosted is down.
+  if (app.isPackaged) {
+    if (await probeUrl(`${HOSTED_API_BASE}/health`, 2500)) {
+      console.log('Using hosted API', HOSTED_API_BASE);
+      return HOSTED_API_BASE;
+    }
+    if (await probeUrl(LOCAL_API_HEALTH, 1200)) {
+      console.log('Hosted API unreachable; using local API', LOCAL_API_BASE);
+      return LOCAL_API_BASE;
+    }
+    console.log('Using hosted API (default)', HOSTED_API_BASE);
+    return HOSTED_API_BASE;
+  }
+
+  // Dev desktop: prefer local API so OTP uses server/.env SMTP.
+  if (!envFlag('ELECTRON_FORCE_HOSTED') && (await probeUrl(LOCAL_API_HEALTH, 1200))) {
     console.log('Using local API', LOCAL_API_BASE);
     return LOCAL_API_BASE;
   }
-  console.log('Using hosted API', HOSTED_API_BASE);
-  return HOSTED_API_BASE;
+
+  if (await probeUrl(`${HOSTED_API_BASE}/health`, 2500)) {
+    console.log('Using hosted API', HOSTED_API_BASE);
+    return HOSTED_API_BASE;
+  }
+
+  console.log('Using local API (default)', LOCAL_API_BASE);
+  return LOCAL_API_BASE;
 }
 
 async function ensureLocalApi() {
-  if (app.isPackaged) return false;
+  if (app.isPackaged || envFlag('ELECTRON_FORCE_HOSTED')) return false;
   if (await probeUrl(LOCAL_API_HEALTH, 1200)) {
     console.log('Local API already running at', LOCAL_API_HEALTH);
     return true;

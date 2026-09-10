@@ -15,6 +15,8 @@ if (process.env.AUTH_ALLOW_PUBLIC_REGISTER === 'true') {
 }
 
 router.post('/login', loginLimiter, auth.login);
+router.post('/verify-otp', loginLimiter, auth.verifyOtp);
+router.post('/resend-otp', loginLimiter, auth.resendOtp);
 router.post('/logout', auth.logout);
 router.post('/refresh', refreshLimiter, auth.refresh);
 router.get('/me', verifyToken, auth.me);

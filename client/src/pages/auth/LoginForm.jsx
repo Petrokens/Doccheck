@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser } from '@/services/authService';
+import { loginUser, resendLoginOtp, verifyLoginOtp } from '@/services/authService';
 import { useSessionAuth } from '@/context/SessionAuthContext';
 import { publicApiError } from '@/lib/uploadSafety';
 import { toast } from 'sonner';
-import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, Mail } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,9 @@ function readRememberedEmail() {
 export default function LoginForm() {
   const remembered = readRememberedEmail();
   const [form, setForm] = useState({ email: remembered, password: '' });
+  const [otp, setOtp] = useState('');
+  const [challengeId, setChallengeId] = useState('');
+  const [step, setStep] = useState('credentials');
   const [rememberEmail, setRememberEmail] = useState(Boolean(remembered));
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -36,20 +39,42 @@ export default function LoginForm() {
     if (!rememberEmail) localStorage.removeItem(REMEMBER_EMAIL_KEY);
   }, [rememberEmail]);
 
-  const handleSubmit = async (e) => {
+  const finishLogin = async (accessToken) => {
+    if (rememberEmail) localStorage.setItem(REMEMBER_EMAIL_KEY, form.email.trim());
+    else localStorage.removeItem(REMEMBER_EMAIL_KEY);
+    await markLoggedIn(accessToken);
+    toast.success('Login successful!');
+    navigate('/dashboard');
+  };
+
+  const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
     if (busyRef.current) return;
     busyRef.current = true;
     setLoading(true);
     try {
       const data = await loginUser(form);
-      if (data.accessToken) {
-        if (rememberEmail) localStorage.setItem(REMEMBER_EMAIL_KEY, form.email.trim());
-        else localStorage.removeItem(REMEMBER_EMAIL_KEY);
-        await markLoggedIn(data.accessToken);
-        toast.success('Login successful!');
-        navigate('/dashboard');
+
+      // OTP policy: password step must return a challenge (never skip UI when requiresOtp).
+      if (data?.requiresOtp || data?.challengeId) {
+        if (!data.challengeId) {
+          toast.error('Login challenge missing. Try again.');
+          return;
+        }
+        setChallengeId(data.challengeId);
+        setOtp('');
+        setStep('otp');
+        toast.success(data.message || 'Verification code sent to your email.');
+        return;
       }
+
+      // Only allowed when server has AUTH_SKIP_OTP=true
+      if (data?.accessToken) {
+        await finishLogin(data.accessToken);
+        return;
+      }
+
+      toast.error('Unexpected login response.');
     } catch (err) {
       toast.error(publicApiError(err, 'Login failed'));
     } finally {
@@ -57,6 +82,108 @@ export default function LoginForm() {
       setLoading(false);
     }
   };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setLoading(true);
+    try {
+      const data = await verifyLoginOtp({ challengeId, otp });
+      if (data.accessToken) await finishLogin(data.accessToken);
+      else toast.error('Unexpected verification response.');
+    } catch (err) {
+      toast.error(publicApiError(err, 'Verification failed'));
+    } finally {
+      busyRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (busyRef.current || !challengeId) return;
+    busyRef.current = true;
+    setLoading(true);
+    try {
+      const data = await resendLoginOtp({ challengeId });
+      if (data.challengeId) setChallengeId(data.challengeId);
+      setOtp('');
+      toast.success(data.message || 'A new code was sent.');
+    } catch (err) {
+      toast.error(publicApiError(err, 'Could not resend code'));
+    } finally {
+      busyRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  if (step === 'otp') {
+    return (
+      <div className="w-full">
+        <h1 className="font-heading text-[1.65rem] font-semibold tracking-wide text-foreground">
+          Enter code
+        </h1>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          We emailed a 6-digit code to <span className="font-medium text-foreground">{form.email.trim()}</span>.
+        </p>
+
+        <form onSubmit={handleOtpSubmit} className="mt-6 space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="otp" className="text-slate-700">
+              Verification code
+            </Label>
+            <div className="relative">
+              <ShieldCheck className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="otp"
+                name="otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                required
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="6-digit code"
+                className={`${AUTH_INPUT} tracking-[0.28em] pl-10`}
+              />
+            </div>
+          </div>
+
+          <Button type="submit" disabled={loading || otp.length !== 6} size="lg" className="mt-1 h-11 w-full text-[15px] font-semibold">
+            {loading ? <Loader2 className="animate-spin" /> : (
+              <>
+                Verify &amp; continue
+                <ArrowRight className="size-4" />
+              </>
+            )}
+          </Button>
+
+          <div className="flex items-center justify-between gap-3 pt-1 text-[13px]">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setStep('credentials');
+                setChallengeId('');
+                setOtp('');
+              }}
+              className="text-slate-600 underline-offset-2 hover:underline"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handleResend}
+              className="font-medium text-[#0f3d3e] underline-offset-2 hover:underline"
+            >
+              Resend code
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -67,7 +194,7 @@ export default function LoginForm() {
         Access your QA/QC workspace with your work email.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleCredentialsSubmit} className="mt-6 space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-slate-700">
             Email
@@ -129,7 +256,7 @@ export default function LoginForm() {
         <Button type="submit" disabled={loading} size="lg" className="mt-1 h-11 w-full text-[15px] font-semibold">
           {loading ? <Loader2 className="animate-spin" /> : (
             <>
-              Sign in
+              Continue
               <ArrowRight className="size-4" />
             </>
           )}

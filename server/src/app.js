@@ -18,8 +18,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
-app.use(securityHeaders());
-app.use(globalLimiter);
+// CORS must run before rate limits so failed/limited responses still include ACAO headers.
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -30,9 +29,12 @@ app.use(
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    optionsSuccessStatus: 204,
     maxAge: 600,
   }),
 );
+app.use(securityHeaders());
+app.use(globalLimiter);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: false, limit: '200kb' }));
 app.use(cookieParser());
