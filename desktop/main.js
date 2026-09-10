@@ -109,11 +109,23 @@ function startRendererServer(rootDir) {
         res.end();
       }
     });
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      rendererServer = server;
-      resolve(`http://127.0.0.1:${server.address().port}`);
-    });
+    const preferredPort = Number(process.env.ELECTRON_RENDERER_PORT || 19200);
+    const bind = (port) => {
+      const onError = (err) => {
+        if (port !== 0 && err && err.code === 'EADDRINUSE') {
+          bind(0);
+          return;
+        }
+        reject(err);
+      };
+      server.once('error', onError);
+      server.listen(port, '127.0.0.1', () => {
+        server.removeListener('error', onError);
+        rendererServer = server;
+        resolve(`http://127.0.0.1:${server.address().port}`);
+      });
+    };
+    bind(Number.isFinite(preferredPort) && preferredPort > 0 ? preferredPort : 19200);
   });
 }
 
