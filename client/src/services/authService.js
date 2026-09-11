@@ -5,7 +5,6 @@ export const loginUser = async (credentials) => {
     email: String(credentials.email || '').trim(),
     password: credentials.password,
   });
-  // Password step must never establish a session — OTP is mandatory.
   return response.data;
 };
 

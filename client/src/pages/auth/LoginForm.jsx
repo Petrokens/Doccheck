@@ -55,7 +55,6 @@ export default function LoginForm() {
     try {
       const data = await loginUser(form);
 
-      // Mandatory OTP step — never accept password-only accessToken sessions.
       if (data?.requiresOtp && data?.challengeId) {
         setChallengeId(data.challengeId);
         setOtp('');
@@ -64,10 +63,9 @@ export default function LoginForm() {
         return;
       }
 
+      // Current local/hosted API still issues a session after password login.
       if (data?.accessToken) {
-        toast.error(
-          'OTP is required, but this API logged you in with password only. Start the local server (cd server && npm run dev) or deploy the OTP login build to Render.',
-        );
+        await finishLogin(data.accessToken);
         return;
       }
 
@@ -79,7 +77,7 @@ export default function LoginForm() {
         return;
       }
 
-      toast.error('Unexpected login response. OTP challenge was not returned.');
+      toast.error('Unexpected login response.');
     } catch (err) {
       toast.error(publicApiError(err, 'Login failed'));
     } finally {

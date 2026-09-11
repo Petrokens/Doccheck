@@ -1,5 +1,6 @@
 import api, { setAccessToken } from '../lib/axios';
 import { bearerAuthHeaders, getValidAccessToken } from '../lib/authToken';
+import { filenameFromDisposition, openPdfInApp } from '../lib/openPdfInApp';
 import { refreshAccessToken } from './authService';
 import { API_BASE_URL } from '../config';
 
@@ -155,8 +156,11 @@ export async function printProcessReportPdf(id) {
   });
   if (!response.ok) throw new Error('Failed to download PDF');
   const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank', 'noopener,noreferrer');
+  const filename = filenameFromDisposition(
+    response.headers.get('content-disposition'),
+    `qaqc-report-${id}.pdf`,
+  );
+  openPdfInApp(blob, filename);
 }
 
 export async function fetchReportDashboardStats() {

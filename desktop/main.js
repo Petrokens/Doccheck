@@ -89,6 +89,40 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function attachWindowOpenGuard(contents) {
+  if (!contents || contents.isDestroyed?.()) return;
+  contents.setWindowOpenHandler(({ url }) => {
+    const value = String(url || '');
+    if (value.startsWith('blob:') || value.startsWith('data:') || value === 'about:blank') {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 1200,
+          height: 860,
+          title: 'DocCheck AI',
+          autoHideMenuBar: true,
+          webPreferences: {
+            sandbox: true,
+            contextIsolation: true,
+            nodeIntegration: false,
+          },
+        },
+      };
+    }
+    if (/^https?:/i.test(value)) {
+      setImmediate(() => {
+        shell.openExternal(value).catch(() => {});
+      });
+    }
+    return { action: 'deny' };
+  });
+}
+
+app.on('web-contents-created', (_event, contents) => {
+  attachWindowOpenGuard(contents);
+});
+
+
 function findServerDir() {
   const candidates = [
     path.join(__dirname, '..', 'server'),
@@ -283,10 +317,7 @@ function createMainWindow() {
     app.dock.setIcon(APP_ICON);
   }
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: 'deny' };
-  });
+  attachWindowOpenGuard(mainWindow.webContents);
 
   mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
     console.error('Failed to load app URL:', url, code, desc);
