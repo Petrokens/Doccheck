@@ -57,7 +57,7 @@ let splashWindow = null;
 let splashDone = false;
 let rendererServer = null;
 let apiChild = null;
-let apiBaseUrl = HOSTED_API_BASE;
+let apiBaseUrl = LOCAL_API_BASE;
 let startUrl = CANDIDATE_URLS[0] || 'http://localhost:5174';
 
 function probeUrl(url, timeoutMs = 800) {
@@ -110,27 +110,19 @@ async function resolveProductApiBaseUrl() {
     return override.replace(/\/$/, '');
   }
 
-  // Packaged EXE: prefer live Render. Fall back to local only if hosted is down.
-  if (app.isPackaged) {
-    if (await probeUrl(`${HOSTED_API_BASE}/health`, 2500)) {
-      console.log('Using hosted API', HOSTED_API_BASE);
-      return HOSTED_API_BASE;
-    }
-    if (await probeUrl(LOCAL_API_HEALTH, 1200)) {
-      console.log('Hosted API unreachable; using local API', LOCAL_API_BASE);
-      return LOCAL_API_BASE;
-    }
-    console.log('Using hosted API (default)', HOSTED_API_BASE);
-    return HOSTED_API_BASE;
-  }
-
-  // Dev desktop: prefer local API so OTP uses server/.env SMTP.
-  if (!envFlag('ELECTRON_FORCE_HOSTED') && (await probeUrl(LOCAL_API_HEALTH, 1200))) {
+  // Always prefer local API for OTP (SMTP from server/.env).
+  if (await probeUrl(LOCAL_API_HEALTH, 1500)) {
     console.log('Using local API', LOCAL_API_BASE);
     return LOCAL_API_BASE;
   }
 
-  if (await probeUrl(`${HOSTED_API_BASE}/health`, 2500)) {
+  if (envFlag('ELECTRON_FORCE_HOSTED') && (await probeUrl(`${HOSTED_API_BASE}/health`, 2500))) {
+    console.log('Using hosted API (forced)', HOSTED_API_BASE);
+    return HOSTED_API_BASE;
+  }
+
+  // Packaged fallback only when local is unavailable.
+  if (app.isPackaged && (await probeUrl(`${HOSTED_API_BASE}/health`, 2500))) {
     console.log('Using hosted API', HOSTED_API_BASE);
     return HOSTED_API_BASE;
   }
@@ -140,7 +132,7 @@ async function resolveProductApiBaseUrl() {
 }
 
 async function ensureLocalApi() {
-  if (app.isPackaged || envFlag('ELECTRON_FORCE_HOSTED')) return false;
+  if (envFlag('ELECTRON_FORCE_HOSTED')) return false;
   if (await probeUrl(LOCAL_API_HEALTH, 1200)) {
     console.log('Local API already running at', LOCAL_API_HEALTH);
     return true;

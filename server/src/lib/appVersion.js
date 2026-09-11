@@ -30,6 +30,7 @@ function getAppUpdateInfo() {
     ok: true,
     product: 'DocCheck AI',
     version,
+    otpRequired: true,
     forceUpdate: String(process.env.APP_FORCE_UPDATE || '').trim() === '1',
     message: String(process.env.APP_UPDATE_MESSAGE || '').trim()
       || 'A newer DocCheck AI version is available. Update to keep using the latest QA/QC features.',

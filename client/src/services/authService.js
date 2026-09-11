@@ -5,10 +5,7 @@ export const loginUser = async (credentials) => {
     email: String(credentials.email || '').trim(),
     password: credentials.password,
   });
-  // Do not store access token on the password step when OTP is required.
-  if (response.data?.accessToken && !response.data?.requiresOtp) {
-    setAccessToken(response.data.accessToken);
-  }
+  // Password step must never establish a session — OTP is mandatory.
   return response.data;
 };
 

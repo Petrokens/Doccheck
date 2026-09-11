@@ -176,12 +176,6 @@ async function rotateAndSendLoginOtp(user, existingChallengeId) {
   });
 }
 
-function otpEnabled() {
-  // OTP login policy: ON by default. Only AUTH_SKIP_OTP=true disables it.
-  const skip = String(process.env.AUTH_SKIP_OTP || '').trim().toLowerCase();
-  return !(skip === 'true' || skip === '1' || skip === 'yes');
-}
-
 exports.register = async (req, res) => {
   const { username, email, password, role_id } = req.body || {};
   if (!username || !email || !password) {
@@ -247,12 +241,7 @@ exports.login = async (req, res) => {
       return publicError(res, 401, INVALID_LOGIN_MESSAGE);
     }
 
-    if (!otpEnabled()) {
-      const accessToken = await issueSession(res, user);
-      audit('auth.login', { user_id: user.user_id, ip: clientIp(req), via: 'password' });
-      return res.json({ message: 'Login successful', accessToken });
-    }
-
+    // OTP is mandatory for login (password alone never issues a session).
     const { challengeId, expiresAt } = await createAndSendLoginOtp(user);
     audit('auth.otp_sent', { user_id: user.user_id, ip: clientIp(req), challengeId });
     return res.json({

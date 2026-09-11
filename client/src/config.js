@@ -1,8 +1,8 @@
 /**
  * API base URL.
  * - Desktop EXE may inject window.doccheckDesktop.apiBaseUrl
- * - Vite dev → local API (OTP + SMTP from server/.env)
- * - Production build → live Render
+ * - Vite/dev → local API (OTP + SMTP from server/.env)
+ * - Production web/EXE build → live Render (must have OTP code + SMTP env deployed)
  */
 function resolveApiBaseUrl() {
   const desktopApi =

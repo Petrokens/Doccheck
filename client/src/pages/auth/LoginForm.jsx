@@ -55,12 +55,8 @@ export default function LoginForm() {
     try {
       const data = await loginUser(form);
 
-      // OTP policy: password step must return a challenge (never skip UI when requiresOtp).
-      if (data?.requiresOtp || data?.challengeId) {
-        if (!data.challengeId) {
-          toast.error('Login challenge missing. Try again.');
-          return;
-        }
+      // Mandatory OTP step — never accept password-only accessToken sessions.
+      if (data?.requiresOtp && data?.challengeId) {
         setChallengeId(data.challengeId);
         setOtp('');
         setStep('otp');
@@ -68,13 +64,22 @@ export default function LoginForm() {
         return;
       }
 
-      // Only allowed when server has AUTH_SKIP_OTP=true
       if (data?.accessToken) {
-        await finishLogin(data.accessToken);
+        toast.error(
+          'OTP is required, but this API logged you in with password only. Start the local server (cd server && npm run dev) or deploy the OTP login build to Render.',
+        );
         return;
       }
 
-      toast.error('Unexpected login response.');
+      if (data?.challengeId) {
+        setChallengeId(data.challengeId);
+        setOtp('');
+        setStep('otp');
+        toast.success(data.message || 'Verification code sent to your email.');
+        return;
+      }
+
+      toast.error('Unexpected login response. OTP challenge was not returned.');
     } catch (err) {
       toast.error(publicApiError(err, 'Login failed'));
     } finally {
