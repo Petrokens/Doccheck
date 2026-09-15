@@ -57,7 +57,7 @@ let splashWindow = null;
 let splashDone = false;
 let rendererServer = null;
 let apiChild = null;
-let apiBaseUrl = LOCAL_API_BASE;
+let apiBaseUrl = HOSTED_API_BASE;
 let startUrl = CANDIDATE_URLS[0] || 'http://localhost:5174';
 
 function probeUrl(url, timeoutMs = 800) {
@@ -144,29 +144,17 @@ async function resolveProductApiBaseUrl() {
     return override.replace(/\/$/, '');
   }
 
-  // Always prefer local API for OTP (SMTP from server/.env).
-  if (await probeUrl(LOCAL_API_HEALTH, 1500)) {
+  if (envFlag('ELECTRON_USE_LOCAL') && (await probeUrl(LOCAL_API_HEALTH, 1500))) {
     console.log('Using local API', LOCAL_API_BASE);
     return LOCAL_API_BASE;
   }
 
-  if (envFlag('ELECTRON_FORCE_HOSTED') && (await probeUrl(`${HOSTED_API_BASE}/health`, 2500))) {
-    console.log('Using hosted API (forced)', HOSTED_API_BASE);
-    return HOSTED_API_BASE;
-  }
-
-  // Packaged fallback only when local is unavailable.
-  if (app.isPackaged && (await probeUrl(`${HOSTED_API_BASE}/health`, 2500))) {
-    console.log('Using hosted API', HOSTED_API_BASE);
-    return HOSTED_API_BASE;
-  }
-
-  console.log('Using local API (default)', LOCAL_API_BASE);
-  return LOCAL_API_BASE;
+  console.log('Using hosted API', HOSTED_API_BASE);
+  return HOSTED_API_BASE;
 }
 
 async function ensureLocalApi() {
-  if (envFlag('ELECTRON_FORCE_HOSTED')) return false;
+  if (!envFlag('ELECTRON_USE_LOCAL')) return false;
   if (await probeUrl(LOCAL_API_HEALTH, 1200)) {
     console.log('Local API already running at', LOCAL_API_HEALTH);
     return true;

@@ -1,17 +1,18 @@
+const HOSTED_API = 'https://doccheck-3qw4.onrender.com/api';
+
 /**
  * API base URL.
- * - Desktop EXE may inject window.doccheckDesktop.apiBaseUrl
- * - Vite/dev → local API (OTP + SMTP from server/.env)
- * - Production web/EXE build → live Render (must have OTP code + SMTP env deployed)
+ * Default is the live Render API. Override with VITE_API_URL or desktop injection.
  */
 function resolveApiBaseUrl() {
   const desktopApi =
     typeof window !== 'undefined'
       ? String(window.doccheckDesktop?.apiBaseUrl || '').trim()
       : '';
-  if (desktopApi) return desktopApi;
-  if (import.meta.env.DEV) return 'http://127.0.0.1:5000/api';
-  return 'https://doccheck-3qw4.onrender.com/api';
+  if (desktopApi) return desktopApi.replace(/\/$/, '');
+  const envApi = String(import.meta.env.VITE_API_URL || '').trim();
+  if (envApi) return envApi.replace(/\/$/, '');
+  return HOSTED_API;
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();

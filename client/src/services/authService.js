@@ -5,20 +5,7 @@ export const loginUser = async (credentials) => {
     email: String(credentials.email || '').trim(),
     password: credentials.password,
   });
-  return response.data;
-};
-
-export const verifyLoginOtp = async ({ challengeId, otp }) => {
-  const response = await api.post('/auth/verify-otp', {
-    challengeId,
-    otp: String(otp || '').replace(/[^\d]/g, '').slice(0, 6),
-  });
   if (response.data.accessToken) setAccessToken(response.data.accessToken);
-  return response.data;
-};
-
-export const resendLoginOtp = async ({ challengeId }) => {
-  const response = await api.post('/auth/resend-otp', { challengeId });
   return response.data;
 };
 

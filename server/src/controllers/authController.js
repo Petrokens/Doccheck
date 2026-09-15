@@ -241,21 +241,11 @@ exports.login = async (req, res) => {
       return publicError(res, 401, INVALID_LOGIN_MESSAGE);
     }
 
-    // OTP is mandatory for login (password alone never issues a session).
-    const { challengeId, expiresAt } = await createAndSendLoginOtp(user);
-    audit('auth.otp_sent', { user_id: user.user_id, ip: clientIp(req), challengeId });
-    return res.json({
-      message: 'Verification code sent to your email.',
-      requiresOtp: true,
-      challengeId,
-      expiresAt,
-    });
+    const accessToken = await issueSession(res, user);
+    audit('auth.login', { user_id: user.user_id, ip: clientIp(req), via: 'password' });
+    return res.json({ message: 'Login successful', accessToken });
   } catch (error) {
-    if (error.code === 'SMTP_NOT_CONFIGURED') {
-      return publicError(res, 503, 'Login email is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS on the server.');
-    }
-    console.error('Login OTP send failed:', error?.message || error);
-    return publicError(res, 502, 'Could not send verification email. Check SMTP settings and try again.');
+    return internalError(res, error, 'Login failed');
   }
 };
 

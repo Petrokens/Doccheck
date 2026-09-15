@@ -112,9 +112,9 @@ function buildOpenApiSpec({ serverUrl } = {}) {
       '/api/auth/login': {
         post: {
           tags: ['Auth'],
-          summary: 'Login (password step)',
+          summary: 'Login',
           description:
-            'Validates email and password, then emails a 6-digit OTP via SMTP. Returns `requiresOtp` + `challengeId` (no access token yet). Five failed password attempts lock the account for 15 minutes (`423`). Rate limit: 8 / 15 min / IP.',
+            'Validates email and password and issues access + refresh tokens. Five failed password attempts lock the account for 15 minutes (`423`). Rate limit: 8 / 15 min / IP.',
           operationId: 'login',
           security: [],
           parameters: trustedOriginParams,
@@ -127,30 +127,16 @@ function buildOpenApiSpec({ serverUrl } = {}) {
           },
           responses: {
             200: {
-              description: 'OTP sent. Complete login with POST /api/auth/verify-otp.',
+              description: 'Login successful',
               ...jsonContent(
-                {
-                  type: 'object',
-                  properties: {
-                    message: { type: 'string' },
-                    requiresOtp: { type: 'boolean' },
-                    challengeId: { type: 'string', format: 'uuid' },
-                    expiresAt: { type: 'string', format: 'date-time' },
-                  },
-                },
-                {
-                  message: 'Verification code sent to your email.',
-                  requiresOtp: true,
-                  challengeId: '00000000-0000-4000-8000-000000000000',
-                },
+                { $ref: '#/components/schemas/LoginResponse' },
+                { message: 'Login successful', accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
               ),
             },
             400: errorResponse('Missing credentials', 'Email and password are required.'),
             401: errorResponse('Invalid credentials', 'Invalid email or password.'),
             423: errorResponse('Account locked', 'Account temporarily locked. Try again later.'),
             429: errorResponse('Rate limited', 'Too many login attempts. Try again after 15 minutes.'),
-            502: errorResponse('SMTP send failed', 'Could not send verification email. Check SMTP settings and try again.'),
-            503: errorResponse('SMTP not configured', 'Login email is not configured.'),
           },
         },
       },
