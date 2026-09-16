@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld('doccheckDesktop', {
   isDesktop: true,
   apiBaseUrl: readApiBaseUrl(),
   appVersion: () => ipcRenderer.invoke('app-version'),
+  loadRememberedLogin: () => ipcRenderer.invoke('remembered-login:load'),
+  saveRememberedLogin: (payload) => ipcRenderer.invoke('remembered-login:save', payload),
+  clearRememberedLogin: () => ipcRenderer.invoke('remembered-login:clear'),
 });
 
 contextBridge.exposeInMainWorld('doccheckSplash', {

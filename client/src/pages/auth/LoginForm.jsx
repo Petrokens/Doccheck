@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { loginUser } from '@/services/authService';
 import { useSessionAuth } from '@/context/SessionAuthContext';
 import { publicApiError } from '@/lib/uploadSafety';
+import {
+  clearRememberedLogin,
+  loadRememberedLogin,
+  peekRememberedEmail,
+  saveRememberedLogin,
+} from '@/lib/rememberLogin';
 import { toast } from 'sonner';
 import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,22 +16,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const REMEMBER_EMAIL_KEY = 'doccheck.rememberEmail';
 const AUTH_INPUT = 'h-11 bg-[#f4f7fb] text-slate-900 placeholder:text-slate-400 dark:bg-[#f4f7fb] dark:text-slate-900 dark:placeholder:text-slate-400';
 
-function readRememberedEmail() {
-  try {
-    localStorage.removeItem('docucheck.rememberEmail');
-    return localStorage.getItem(REMEMBER_EMAIL_KEY) || '';
-  } catch {
-    return '';
-  }
-}
-
 export default function LoginForm() {
-  const remembered = readRememberedEmail();
-  const [form, setForm] = useState({ email: remembered, password: '' });
-  const [rememberEmail, setRememberEmail] = useState(Boolean(remembered));
+  const rememberedEmail = peekRememberedEmail();
+  const isDesktop = Boolean(typeof window !== 'undefined' && window.doccheckDesktop?.isDesktop);
+  const [form, setForm] = useState({ email: rememberedEmail, password: '' });
+  const [rememberMe, setRememberMe] = useState(Boolean(rememberedEmail));
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const busyRef = useRef(false);
@@ -33,8 +30,26 @@ export default function LoginForm() {
   const { markLoggedIn } = useSessionAuth();
 
   useEffect(() => {
-    if (!rememberEmail) localStorage.removeItem(REMEMBER_EMAIL_KEY);
-  }, [rememberEmail]);
+    let cancelled = false;
+    loadRememberedLogin().then((saved) => {
+      if (cancelled) return;
+      setRememberMe(saved.remember);
+      if (!saved.email && !saved.password) return;
+      setForm((current) => ({
+        email: saved.email || current.email,
+        password: saved.password || current.password,
+      }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleRememberChange = (checked) => {
+    const next = Boolean(checked);
+    setRememberMe(next);
+    if (!next) clearRememberedLogin();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,8 +62,8 @@ export default function LoginForm() {
         toast.error('Login did not return a session. Try again.');
         return;
       }
-      if (rememberEmail) localStorage.setItem(REMEMBER_EMAIL_KEY, form.email.trim());
-      else localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      if (rememberMe) await saveRememberedLogin(form);
+      else await clearRememberedLogin();
       await markLoggedIn(data.accessToken);
       toast.success('Login successful!');
       navigate('/dashboard');
@@ -69,7 +84,7 @@ export default function LoginForm() {
         Access your QA/QC workspace with your work email.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="on">
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-slate-700">
             Email
@@ -118,13 +133,21 @@ export default function LoginForm() {
           </div>
         </div>
 
-        <div className="flex items-center pt-0.5">
-          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-slate-600">
+        <div className="flex items-start justify-between gap-3 pt-0.5">
+          <label className="flex cursor-pointer items-start gap-2 text-[13px] text-slate-600">
             <Checkbox
-              checked={rememberEmail}
-              onCheckedChange={(checked) => setRememberEmail(Boolean(checked))}
+              checked={rememberMe}
+              onCheckedChange={handleRememberChange}
+              className="mt-0.5"
             />
-            Remember email
+            <span>
+              <span className="block leading-5">Remember me</span>
+              <span className="block text-[12px] leading-4 text-slate-400">
+                {isDesktop
+                  ? 'Saves email and password on this computer'
+                  : 'Saves your email on this device'}
+              </span>
+            </span>
           </label>
         </div>
 

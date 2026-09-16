@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -135,6 +135,54 @@ function findServerDir() {
 function envFlag(name) {
   const v = String(process.env[name] || '').trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'yes';
+}
+
+function rememberedLoginPath() {
+  return path.join(app.getPath('userData'), 'remembered-login.bin');
+}
+
+function emptyRememberedLogin() {
+  return { email: '', password: '', remember: false };
+}
+
+function loadRememberedLogin() {
+  try {
+    const file = rememberedLoginPath();
+    if (!fs.existsSync(file) || !safeStorage.isEncryptionAvailable()) {
+      return emptyRememberedLogin();
+    }
+    const parsed = JSON.parse(safeStorage.decryptString(fs.readFileSync(file)));
+    const email = String(parsed?.email || '').trim();
+    if (!email) return emptyRememberedLogin();
+    return {
+      email,
+      password: String(parsed?.password || ''),
+      remember: true,
+    };
+  } catch {
+    return emptyRememberedLogin();
+  }
+}
+
+function saveRememberedLogin(payload) {
+  const email = String(payload?.email || '').trim();
+  const password = String(payload?.password || '');
+  if (!email || !safeStorage.isEncryptionAvailable()) {
+    return false;
+  }
+  const encrypted = safeStorage.encryptString(JSON.stringify({ email, password }));
+  fs.writeFileSync(rememberedLoginPath(), encrypted);
+  return true;
+}
+
+function clearRememberedLogin() {
+  try {
+    const file = rememberedLoginPath();
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+  } catch {
+    /* ignore missing file */
+  }
+  return true;
 }
 
 async function resolveProductApiBaseUrl() {
@@ -408,6 +456,9 @@ function createSplashWindow() {
 app.whenReady().then(async () => {
   ipcMain.on('splash-finished', () => finishSplash());
   ipcMain.handle('app-version', () => app.getVersion());
+  ipcMain.handle('remembered-login:load', () => loadRememberedLogin());
+  ipcMain.handle('remembered-login:save', (_event, payload) => saveRememberedLogin(payload));
+  ipcMain.handle('remembered-login:clear', () => clearRememberedLogin());
 
   if (!app.isPackaged) await ensureLocalApi();
   await loadMainApp();
